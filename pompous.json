@@ -1,0 +1,15 @@
+{
+    "projectName": "Log Spout",
+    "domain": "openstatic.org",
+    "projectShortName": "log-spout",
+    "mainClassName": "LogSpoutMain",
+    "projectDescription": "A program for tapping into several log streams over ssh",
+    "appType": "cli",
+    "licType": "ACSL",
+    "depJava": "on",
+    "depOrgJson": "on",
+    "depJetty": "on",
+    "nativeImage": "on",
+    "debianPackage": "on",
+    "generate": "Build my Maven Project STUB"
+}

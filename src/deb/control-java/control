@@ -1,0 +1,8 @@
+Package: log-spout
+Version: 1.0
+Section: misc
+Priority: low
+Architecture: all
+Description: A program for tapping into several log streams over ssh
+Maintainer: openstatic.org <support@openstatic.org>
+Depends: default-jre

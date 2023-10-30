@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=Log Spout
+Comment=A program for tapping into several log streams over ssh
+Exec=/usr/bin/log-spout
+Icon=/usr/share/icons/log-spout/icon-64.png
+Terminal=true
+Type=Application
+Categories=Utility;Application;
