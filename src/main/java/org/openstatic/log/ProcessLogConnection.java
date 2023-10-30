@@ -117,7 +117,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
             {
                 final String fLine = line;
                 this.listeners.forEach((listener) -> {
-                    listener.onLine(fLine);
+                    listener.onLine(LogConnectionParser.replaceVariables(ProcessLogConnection.this.config.optString("_prefix"), this.config) + fLine);
                 });
                 
             }

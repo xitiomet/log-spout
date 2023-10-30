@@ -84,19 +84,25 @@ public class LogConnectionParser
         return j;
     }
 
+    public static String replaceVariables(String line, JSONObject variables)
+    {
+        String cs = line;
+        Set<String> keySet = variables.keySet();
+        for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
+        {
+            String key = keyIterator.next();
+            cs = cs.replaceAll(Pattern.quote("$(" + key + ")"), variables.get(key).toString());
+        }
+        return cs;
+    }
+
     public static ArrayList<String> executeForEach(JSONArray command, JSONObject varContext)
     {
         final ArrayList<String> commandArray = new ArrayList<String>();
         for(int i = 0; i < command.length(); i++)
         {
             String cs = command.getString(i);
-            Set<String> keySet = varContext.keySet();
-            for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
-            {
-                String key = keyIterator.next();
-                cs = cs.replaceAll(Pattern.quote("$(" + key + ")"), varContext.get(key).toString());
-            }
-            commandArray.add(cs);
+            commandArray.add(replaceVariables(cs, varContext));
         }
         System.err.println("CommandArray: " + commandArray.stream().collect(Collectors.joining(" ")));
         ProcessBuilder processBuilder = new ProcessBuilder(commandArray);
