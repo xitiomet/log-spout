@@ -20,12 +20,13 @@ public class ProcessLogConnection implements LogConnection, Runnable
     private Thread thread;
     private InputStream inputStream;
     private JSONObject config;
+    private ArrayList<String> commandArray;
 
     public ProcessLogConnection(JSONObject config)
     {
-        System.err.println("Process: " + config.toString());
+        //System.err.println("Process: " + config.toString());
         JSONArray command = config.optJSONArray("_execute");
-        final ArrayList<String> commandArray = new ArrayList<String>();
+        this.commandArray = new ArrayList<String>();
         for(int i = 0; i < command.length(); i++)
         {
             String cs = command.getString(i);
@@ -37,10 +38,10 @@ public class ProcessLogConnection implements LogConnection, Runnable
             }
             commandArray.add(cs);
         }
-        System.err.println("CommandArray: " + commandArray.stream().collect(Collectors.joining(" ")));
+        //System.err.println("CommandArray: " + commandArray.stream().collect(Collectors.joining(" ")));
         this.config = config;
         this.listeners = new ArrayList<LogConnectionListener>();
-        this.processBuilder = new ProcessBuilder(commandArray);
+        this.processBuilder = new ProcessBuilder(this.commandArray);
     }
 
     public ProcessLogConnection(ProcessBuilder processBuilder)
@@ -75,6 +76,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
             } else {
                 this.process = this.processBuilder.start();
             }
+            System.err.println("Launched: " + this.commandArray.stream().collect(Collectors.joining(" ")));
             this.inputStream = this.process.getInputStream();
             if (this.thread == null)
             {
@@ -100,6 +102,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
             this.process.destroy();
             this.inputStream.close();
             this.inputStream = null;
+            System.err.println("Terminated: " + this.commandArray.stream().collect(Collectors.joining(" ")));
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
@@ -117,7 +120,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
             {
                 final String fLine = line;
                 this.listeners.forEach((listener) -> {
-                    listener.onLine(LogConnectionParser.replaceVariables(ProcessLogConnection.this.config.optString("_prefix"), this.config) + fLine);
+                    listener.onLine(LogConnectionParser.replaceVariables(ProcessLogConnection.this.config.optString("_prefix",""), this.config) + fLine, ProcessLogConnection.this.config);
                 });
                 
             }

@@ -26,17 +26,27 @@ public class LogConnectionParser
             } else if (type.equals("process")) {
                 return new ProcessLogConnection(json);
             }
-        } else if (json.has("_source")) {
-            JSONObject source = json.getJSONObject("_source");
-            return parse(mergeCleanVariables(source, json));
+        } else if (json.has("_sources")) {
+            JSONArray sources = json.getJSONArray("_sources");
+            LogConnectionContainer lcc = new LogConnectionContainer(json);
+            for(int i = 0; i < sources.length(); i++)
+            {
+                JSONObject source = sources.getJSONObject(i);
+                if (json.has("_contains"))
+                {
+                    source.put("_contains", json.get("_contains"));
+                }
+                return parse(mergeCleanVariables(source, json));
+            }
+            return lcc;
         }
         return null;
     }
 
     public static LogConnectionContainer forEachLine(JSONObject config)
     {
-        System.err.println("ForEachLine: " + config.toString());
-        LogConnectionContainer lcc = new LogConnectionContainer();
+        //System.err.println("ForEachLine: " + config.toString());
+        LogConnectionContainer lcc = new LogConnectionContainer(config);
         ArrayList<String> forEachValues = null;
         if (config.has("_execute"))
         {
@@ -104,7 +114,7 @@ public class LogConnectionParser
             String cs = command.getString(i);
             commandArray.add(replaceVariables(cs, varContext));
         }
-        System.err.println("CommandArray: " + commandArray.stream().collect(Collectors.joining(" ")));
+        //System.err.println("CommandArray: " + commandArray.stream().collect(Collectors.joining(" ")));
         ProcessBuilder processBuilder = new ProcessBuilder(commandArray);
         ArrayList<String> results = new ArrayList<String>();
         try
@@ -119,7 +129,7 @@ public class LogConnectionParser
                 try
                 {
                     results.add(line);
-                    System.err.println("line: " + line);
+                    //System.err.println("line: " + line);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

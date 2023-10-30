@@ -2,13 +2,18 @@ package org.openstatic.log;
 
 import java.util.ArrayList;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class LogConnectionContainer implements LogConnection, LogConnectionListener
 {
     private ArrayList<LogConnectionListener> listeners;
     private ArrayList<LogConnection> connections;
+    private JSONObject config;
 
-    public LogConnectionContainer()
+    public LogConnectionContainer(JSONObject config)
     {
+        this.config = config;
         this.listeners = new ArrayList<LogConnectionListener>();
         this.connections = new ArrayList<LogConnection>();
     }
@@ -58,9 +63,27 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     }
 
     @Override
-    public void onLine(String line)
+    public void onLine(String line, JSONObject sourceConfig)
     {
-        this.listeners.forEach((l) -> l.onLine(line));
+        boolean flag = false;
+        if (this.config.has("_contains"))
+        {
+            JSONArray contains = this.config.optJSONArray("_contains");
+            for(int i = 0; i < contains.length(); i++)
+            {
+                flag = line.contains(contains.getString(i)) || flag;
+            }
+            
+        } else {
+            flag = true;
+        }
+        if (flag)
+        {
+            final String finalLine = LogConnectionParser.replaceVariables(this.config.optString("_prefix",""), this.config) + line;
+            this.listeners.forEach((l) -> {
+                l.onLine(finalLine, LogConnectionContainer.this.config);
+            });
+        }
     }
     
 }

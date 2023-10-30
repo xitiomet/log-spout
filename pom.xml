@@ -14,7 +14,7 @@
     <imageName>log-spout</imageName>
     <graalvm.version>22.1.0</graalvm.version>
     <jettyVersion>9.4.40.v20210413</jettyVersion>
-    <skipNative>true</skipNative>
+    <skipNative>false</skipNative>
   </properties>
   <dependencies>
     <dependency>
