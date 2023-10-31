@@ -14,7 +14,7 @@
     <imageName>log-spout</imageName>
     <graalvm.version>22.1.0</graalvm.version>
     <jettyVersion>9.4.40.v20210413</jettyVersion>
-    <skipNative>false</skipNative>
+    <skipNative>true</skipNative>
   </properties>
   <dependencies>
     <dependency>
@@ -30,7 +30,7 @@
     <dependency>
         <groupId>org.json</groupId>
         <artifactId>json</artifactId>
-        <version>20160810</version>
+        <version>20230227</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/commons-cli/commons-cli -->
     <dependency>
@@ -90,7 +90,15 @@
             <includes>
                 <include>**</include>
             </includes>
+            <targetPath>logspout</targetPath>
         </resource>
+        <resource>
+            <directory>${project.basedir}/src/main/resources/META-INF/</directory>
+            <includes>
+                <include>**</include>
+            </includes>
+            <targetPath>META-INF</targetPath>
+          </resource>
     </resources>
     <plugins>
           <plugin>
