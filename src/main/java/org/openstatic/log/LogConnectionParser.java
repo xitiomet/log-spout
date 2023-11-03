@@ -15,6 +15,27 @@ import org.json.JSONObject;
 
 public class LogConnectionParser
 {
+
+    public static LogConnectionContainer parseInitial(JSONObject json)
+    {
+        if (json.has("_sources")) 
+        {
+            JSONArray sources = json.getJSONArray("_sources");
+            LogConnectionContainer lcc = new LogConnectionContainer(json);
+            for(int i = 0; i < sources.length(); i++)
+            {
+                JSONObject source = sources.getJSONObject(i);
+                if (json.has("_contains"))
+                {
+                    source.put("_contains", json.get("_contains"));
+                }
+                lcc.addLogConnection(parse(mergeCleanVariables(source, json)));
+            }
+            return lcc;
+        }
+        return null;
+    }
+
     public static LogConnection parse(JSONObject json)
     {
         if (json.has("_type"))
@@ -36,7 +57,7 @@ public class LogConnectionParser
                 {
                     source.put("_contains", json.get("_contains"));
                 }
-                return parse(mergeCleanVariables(source, json));
+                lcc.addLogConnection(parse(mergeCleanVariables(source, json)));
             }
             return lcc;
         }

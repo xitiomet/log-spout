@@ -120,7 +120,9 @@ public class ProcessLogConnection implements LogConnection, Runnable
             {
                 final String fLine = line;
                 this.listeners.forEach((listener) -> {
-                    listener.onLine(LogConnectionParser.replaceVariables(ProcessLogConnection.this.config.optString("_prefix",""), this.config) + fLine, ProcessLogConnection.this.config);
+                    ArrayList<String> logPath = new ArrayList<String>();
+                    logPath.add(this.getName());
+                    listener.onLine(LogConnectionParser.replaceVariables(ProcessLogConnection.this.config.optString("_prefix",""), this.config) + fLine, logPath, ProcessLogConnection.this);
                 });
                 
             }
@@ -128,6 +130,11 @@ public class ProcessLogConnection implements LogConnection, Runnable
             e.printStackTrace();
         }
         //System.err.println("PROC END");
+    }
+
+    @Override
+    public String getName() {
+        return this.config.optString("_name", "");
     }
     
 }

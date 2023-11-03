@@ -91,6 +91,7 @@
     {"name":"<init>","parameterTypes":[] }, 
     {"name":"onClose","parameterTypes":["org.eclipse.jetty.websocket.api.Session","int","java.lang.String"] }, 
     {"name":"onConnect","parameterTypes":["org.eclipse.jetty.websocket.api.Session"] }, 
+    {"name":"onError","parameterTypes":["org.eclipse.jetty.websocket.api.Session","java.lang.Throwable"] }, 
     {"name":"onText","parameterTypes":["org.eclipse.jetty.websocket.api.Session","java.lang.String"] }
   ]
 },

@@ -75,8 +75,10 @@ function fitStuff()
     if (terminalElement != undefined)
     {
         terminalElement.style.height = (window.innerHeight - 60) + 'px';
-        terminalElement.style.width = window.innerWidth - 10 + 'px';
-        fitAddon.fit();
+        terminalElement.style.width = (window.innerWidth - 10) + 'px';
+        setTimeout(() => {
+            fitAddon.fit();
+        },50);
     }
 }
 
@@ -112,12 +114,30 @@ function updateFilter()
     sendEvent({"filter": filter});
 }
 
+function updateLog()
+{
+    var log = document.getElementById('logs').value;
+    sendEvent({"log": log});
+}
+
 function doAuth()
 {
     sendEvent({
         "apiPassword": document.getElementById('password').value,
         "termId": Date.now()
     });
+}
+
+function filterIp()
+{
+    $.get("https://ipv4.lafibre.info/ip.php").done((ipv4) => {
+        $.get("https://ipv6.lafibre.info/ip.php").done((ipv6) => {
+            var filterText = ipv4 + ' || ' + ipv6;
+            document.getElementById('filterInput').value = filterText;
+            updateFilter();
+        });
+    });
+    
 }
 
 function setupWebsocket()
@@ -127,10 +147,10 @@ function setupWebsocket()
         if (hostname == '')
         {
             debugMode = true;
-            hostname = '127.0.0.1';
+            hostname = '172.19.191.115';
             protocol = 'http';
             port = 8662;
-            httpUrl = "http://127.0.0.1:8662/";
+            httpUrl = "http://" + hostname + ":8662/";
         }
         if (protocol.startsWith('https'))
         {
@@ -156,9 +176,9 @@ function setupWebsocket()
                 console.log("Receive: " + e.data);
             }
             var jsonObject = JSON.parse(e.data);
-            if (jsonObject.hasOwnProperty("hostname"))
+            if (jsonObject.hasOwnProperty("name"))
             {
-                document.getElementById('hostname').innerHTML = jsonObject.hostname;
+                document.getElementById('instancename').innerHTML = jsonObject.name;
             }
             if (jsonObject.hasOwnProperty("action"))
             {
@@ -168,6 +188,23 @@ function setupWebsocket()
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('terminalScreen').style.display = 'block';
                     document.getElementById('filterInput').style.display = 'inline-block';
+                    document.getElementById('logs').style.display = 'inline-block';
+                    document.getElementById('filterIp').style.display = 'inline-block';
+                    var logsSelector = document.getElementById('logs');
+                    logsSelector.innerHTML = "";
+                    var first = true;
+                    for(logName of jsonObject.logs)
+                    {
+                        var opt = document.createElement("option");
+                        opt.value = logName;
+                        opt.innerHTML = logName;
+                        if (first)
+                        {
+                            opt.checked = true;
+                            first = false;
+                        }
+                        logsSelector.appendChild(opt);
+                    }
                     termAuth = jsonObject.termAuth;
                     updateKCS(true)
                     sendEvent({
@@ -175,6 +212,7 @@ function setupWebsocket()
                     });
                     runFakeTerminal();
                     fitStuff();
+                    updateLog();
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'line') {
@@ -233,7 +271,7 @@ function cleanPayload(payload)
 }
 
 window.onload = function() {
-    term = new Terminal({cursorBlink: false, allowProposedApi: true, scrollback: 200});
+    term = new Terminal({cursorBlink: false, allowProposedApi: true, scrollback: 200, fontSize: 10});
     term.open(document.getElementById('terminal')); 
     term.loadAddon(fitAddon);
     setupWebsocket();

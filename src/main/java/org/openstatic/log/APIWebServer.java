@@ -15,7 +15,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.Arrays;
 
 import javax.servlet.ServletException;
@@ -31,6 +33,7 @@ import org.eclipse.jetty.websocket.common.WebSocketSession;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -43,12 +46,12 @@ public class APIWebServer implements Runnable, LogConnectionListener
     protected HashMap<WebSocketSession, JSONObject> sessionProps;
     private Thread pingPongThread;
     private ArrayList<JSONObject> packetHistory;
-    private LogConnection logConnection;
+    private LogConnectionContainer logConnections;
     protected static APIWebServer instance;
 
-    public APIWebServer(LogConnection lc)
+    public APIWebServer(LogConnectionContainer lc)
     {
-        this.logConnection = lc;
+        this.logConnections = lc;
         this.packetHistory = new ArrayList<JSONObject>();
         APIWebServer.instance = this;
         this.wsSessions = new ArrayList<WebSocketSession>();
@@ -71,7 +74,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
         }
         this.pingPongThread = new Thread(this);
         this.pingPongThread.start();
-        this.logConnection.addLogConnectionListener(this);
+        this.logConnections.addLogConnectionListener(this);
     }
 
     public static synchronized String generateBigAlphaKey(int key_length)
@@ -100,13 +103,31 @@ public class APIWebServer implements Runnable, LogConnectionListener
             this.packetHistory.remove(0);
     }
 
+    public static ArrayList<String> getLogNames(LogConnection lc)
+    {
+        final ArrayList<String> rl = new ArrayList<String>();
+        String lName = lc.getName();
+        if (!"".equals(lName))
+            rl.add(lName);
+        if (lc instanceof LogConnectionContainer)
+        {
+            LogConnectionContainer lcc = (LogConnectionContainer) lc;
+            lcc.getLogConnections().forEach((slc) -> {
+                rl.addAll(getLogNames(slc));
+            });
+        }
+        return rl;
+    }
+
     public static void sendAuthOk(WebSocketSession session, String termAuth)
     {
         JSONObject authJsonObject = new JSONObject();
         authJsonObject.put("action", "authOk");
         authJsonObject.put("termAuth", termAuth);
         authJsonObject.put("availableHistory", APIWebServer.instance.packetHistory.size());
+        authJsonObject.put("logs", getLogNames(APIWebServer.instance.logConnections));
         authJsonObject.put("hostname", LogSpoutMain.settings.optString("hostname", "LOGSPOUT"));
+        authJsonObject.put("name", APIWebServer.instance.logConnections.getName());
         session.getRemote().sendStringByFuture(authJsonObject.toString());
     }
 
@@ -156,6 +177,8 @@ public class APIWebServer implements Runnable, LogConnectionListener
                 }
             } else if (j.has("filter")) {
                 sessionProperties.put("filter", j.optString("filter", ""));
+            } else if (j.has("log")) {
+                sessionProperties.put("log", j.optString("log", ""));
             }
         } else {
             JSONObject errorJsonObject = new JSONObject();
@@ -195,7 +218,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
                     s.getRemote().sendStringByFuture(message);
                 }
             } catch (Exception e) {
-
+                e.printStackTrace(System.err);
             }
         }
     }
@@ -213,7 +236,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
                     s.getRemote().sendStringByFuture(message);
                 }
             } catch (Exception e) {
-
+                e.printStackTrace(System.err);
             }
         }
     }
@@ -236,7 +259,8 @@ public class APIWebServer implements Runnable, LogConnectionListener
     public static class EventsWebSocket {
 
         @OnWebSocketMessage
-        public void onText(Session session, String message) throws IOException {
+        public void onText(Session session, String message) throws IOException
+        {
             try {
                 JSONObject jo = new JSONObject(message);
                 if (session instanceof WebSocketSession) {
@@ -246,7 +270,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
                     //System.err.println("not instance of WebSocketSession");
                 }
             } catch (Exception e) {
-                //e.printStackTrace(System.err);
+                e.printStackTrace(System.err);
             }
         }
 
@@ -279,11 +303,17 @@ public class APIWebServer implements Runnable, LogConnectionListener
 
         @OnWebSocketClose
         public void onClose(Session session, int status, String reason) {
+            //System.err.println(reason);
             if (session instanceof WebSocketSession) {
                 WebSocketSession wssession = (WebSocketSession) session;
                 APIWebServer.instance.wsSessions.remove(wssession);
                 APIWebServer.instance.sessionProps.remove(wssession);
             }
+        }
+
+        @OnWebSocketError
+        public void onError(Session session, Throwable err) {
+            //err.printStackTrace(System.err);
         }
 
     }
@@ -404,39 +434,59 @@ public class APIWebServer implements Runnable, LogConnectionListener
     }
 
     @Override
-    public void onLine(String line, JSONObject config) 
+    public void onLine(String line, ArrayList<String> logPath, LogConnection connection) 
     {
         JSONObject jo = new JSONObject();
         jo.put("action", "line");
         jo.put("line", line);
-        jo.put("config", config);
+        jo.put("connection", connection.getName());
         String message = jo.toString();
         for (Session s : this.wsSessions)
         {
             try
             {
                 JSONObject sessionProps = this.sessionProps.get(s);
-                if (sessionProps.optBoolean("auth", false))
+                if (sessionProps != null)
                 {
                     boolean fitsFilter = false;
-                    if (sessionProps.has("filter"))
+                    if (sessionProps.optBoolean("auth", false))
                     {
-                        String filter = sessionProps.optString("filter","");
-                        if (filter.equals(""))
+                        if (sessionProps.has("log"))
                         {
-                            fitsFilter = true;
-                        } else {
-                            if (line.contains(filter))
-                                fitsFilter = true;
+                            String log = sessionProps.optString("log","");
+                            if (logPath.contains(log) && !"".equals(log))
+                            {
+                                if (sessionProps.has("filter"))
+                                {
+                                    String filter = sessionProps.optString("filter","");
+                                    if (filter.equals(""))
+                                    {
+                                        fitsFilter = true;
+                                    } else {
+                                        String[] splitFilter = filter.split(Pattern.quote("||"));
+                                        if (splitFilter.length > 1)
+                                        {
+                                            for(int i = 0; i < splitFilter.length; i++)
+                                            {
+                                                if (line.contains(splitFilter[i].trim()))
+                                                    fitsFilter = true;
+                                            }
+                                        } else {
+                                            if (line.contains(filter))
+                                                fitsFilter = true;
+                                        }
+                                    }
+                                } else {
+                                    fitsFilter = true;
+                                }
+                            }
                         }
-                    } else {
-                        fitsFilter = true;
                     }
                     if (fitsFilter)
                         s.getRemote().sendStringByFuture(message);
                 }
             } catch (Exception e) {
-
+                //e.printStackTrace(System.err);
             }
         }
         addHistory(jo);

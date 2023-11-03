@@ -7,9 +7,11 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.cli.*;
 import org.json.*;
@@ -33,6 +35,8 @@ public class LogSpoutMain
         options.addOption(new Option("?", "help", false, "Shows help"));
         options.addOption(new Option("f", "config", true, "Specify config file"));
         options.addOption(new Option("c", "contains", true, "Specify a comma seperated list of strings to match each line against. Must contain one of the strings provided."));
+        options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
+        boolean stdoutLogs = false;
         try
         {
             cmd = parser.parse(options, args);
@@ -40,6 +44,10 @@ public class LogSpoutMain
             if (cmd.hasOption("?"))
             {
                 showHelp(options);
+            }
+            if (cmd.hasOption("s"))
+            {
+                stdoutLogs = true;
             }
             if (cmd.hasOption("f"))
             {
@@ -59,21 +67,24 @@ public class LogSpoutMain
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
-        final LogConnection lc = LogConnectionParser.parse(LogSpoutMain.settings);
-        lc.addLogConnectionListener(new LogConnectionListener() {
+        final LogConnectionContainer lcc = LogConnectionParser.parseInitial(LogSpoutMain.settings);
+        if (stdoutLogs)
+        {
+            lcc.addLogConnectionListener(new LogConnectionListener() {
 
-            @Override
-            public void onLine(String line, JSONObject config) {
-                System.err.println(line);
-            }
-            
-        });
-        lc.connect();
-        APIWebServer apiWebServer = new APIWebServer(lc);
+                @Override
+                public void onLine(String line, ArrayList<String> logPath, LogConnection connection) {
+                    System.err.println(line);
+                }
+                
+            });
+        }
+        lcc.connect();
+        APIWebServer apiWebServer = new APIWebServer(lcc);
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run()
             {
-                lc.disconnect();
+                lcc.disconnect();
             }
         });
     }

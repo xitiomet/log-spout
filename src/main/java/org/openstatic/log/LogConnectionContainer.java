@@ -2,6 +2,7 @@ package org.openstatic.log;
 
 import java.util.ArrayList;
 
+import java.util.Collection;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -62,8 +63,13 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         this.connections.forEach((c) -> c.disconnect());
     }
 
+    public Collection<LogConnection> getLogConnections()
+    {
+        return this.connections;
+    }
+
     @Override
-    public void onLine(String line, JSONObject sourceConfig)
+    public void onLine(String line, ArrayList<String> logPath, LogConnection connection)
     {
         boolean flag = false;
         if (this.config.has("_contains"))
@@ -80,10 +86,20 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         if (flag)
         {
             final String finalLine = LogConnectionParser.replaceVariables(this.config.optString("_prefix",""), this.config) + line;
+            ArrayList<String> newLogPath = new ArrayList<String>();
+            newLogPath.add(this.getName());
+            newLogPath.addAll(logPath);
             this.listeners.forEach((l) -> {
-                l.onLine(finalLine, LogConnectionContainer.this.config);
+                l.onLine(finalLine, newLogPath, connection);
             });
         }
+    }
+
+    @Override
+    public String getName() 
+    {
+        return this.config.optString("_name", "Untitled Container");
+
     }
     
 }
