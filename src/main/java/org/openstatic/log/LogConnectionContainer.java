@@ -3,8 +3,11 @@ package org.openstatic.log;
 import java.util.ArrayList;
 
 import java.util.Collection;
+
+import org.apache.commons.logging.LogSource;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openstatic.LogSpoutMain;
 
 public class LogConnectionContainer implements LogConnection, LogConnectionListener
 {
@@ -72,14 +75,10 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     public void onLine(String line, ArrayList<String> logPath, LogConnection connection)
     {
         boolean flag = false;
-        if (this.config.has("_contains"))
+        if (this.config.has("_filter"))
         {
-            JSONArray contains = this.config.optJSONArray("_contains");
-            for(int i = 0; i < contains.length(); i++)
-            {
-                flag = line.contains(contains.getString(i)) || flag;
-            }
-            
+            String filter = this.config.optString("_filter");
+            flag = LogSpoutMain.isMatch(line, filter);
         } else {
             flag = true;
         }
@@ -89,7 +88,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
             ArrayList<String> newLogPath = new ArrayList<String>();
             newLogPath.add(this.getName());
             newLogPath.addAll(logPath);
-            this.listeners.forEach((l) -> {
+            ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((l) -> {
                 l.onLine(finalLine, newLogPath, connection);
             });
         }

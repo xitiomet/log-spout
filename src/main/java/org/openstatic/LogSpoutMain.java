@@ -1,5 +1,6 @@
 package org.openstatic;
 
+import java.beans.Expression;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -10,19 +11,88 @@ import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Map;
+import java.util.Random;
+import java.util.Stack;
+import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.cli.*;
 import org.json.*;
 import org.openstatic.log.*;
+import org.apache.commons.jexl3.JexlEngine;
+import org.apache.commons.jexl3.JexlExpression;
+import org.apache.commons.jexl3.JexlFeatures;
+import org.apache.commons.jexl3.JexlBuilder;
+import org.apache.commons.jexl3.JexlContext;
+import org.apache.commons.jexl3.MapContext;
 
 public class LogSpoutMain
 {
     public static JSONObject settings;
+    public static JexlEngine jexl;
+
+    public static synchronized String generateBigAlphaKey(int key_length)
+    {
+        try
+        {
+            // make sure we never get the same millis!
+            Thread.sleep(1);
+        } catch (Exception e) {}
+        Random n = new Random(System.currentTimeMillis());
+        String alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        StringBuffer return_key = new StringBuffer();
+        for (int i = 0; i < key_length; i++)
+        {
+            return_key.append(alpha.charAt(n.nextInt(alpha.length())));
+        }
+        String randKey = return_key.toString();
+        //System.err.println("Generated Rule ID: " + randKey);
+        return randKey;
+    }
+
+    public static boolean isMatch(String line, String filter)
+    {
+        if (filter != null)
+        {
+            try
+            {
+                String exp = filter.replaceAll("\\(", "( ").replaceAll("\\)", " )");
+                JexlContext jexlContext = new MapContext();
+                StringTokenizer st = new StringTokenizer(exp);
+                String newFilter = filter + "";
+                while(st.hasMoreElements())
+                {
+                    String el = st.nextToken().trim();
+                    if (el.equals("(") || el.equals(")") || el.equals("||") || el.equals("&&"))
+                    {
+                        //Ignore
+                    } else {
+                        String var = generateBigAlphaKey(3);
+                        boolean contained = line.contains(el);
+                        jexlContext.set(var, contained);
+                        newFilter = newFilter.replaceAll(Pattern.quote(el),var);
+                    }
+                }
+                JexlExpression expression = jexl.createExpression(newFilter);
+                return (Boolean)expression.evaluate(jexlContext);
+            } catch (Exception e) {
+                return false;
+            }
+        } else {
+            return true;
+        }
+    }
 
     public static void main(String[] args)
     {
+        JexlFeatures features = new JexlFeatures()
+                .loops(false)
+                .sideEffectGlobal(false)
+                .sideEffect(false);
+        // Restricted permissions to a safe set but with URI allowed
+        LogSpoutMain.jexl = new JexlBuilder().features(features).create();
+
         org.eclipse.jetty.util.log.Log.setLog(new NoLogging());
         //System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog");
         System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
@@ -34,7 +104,7 @@ public class LogSpoutMain
         LogSpoutMain.settings = new JSONObject();
         options.addOption(new Option("?", "help", false, "Shows help"));
         options.addOption(new Option("f", "config", true, "Specify config file"));
-        options.addOption(new Option("c", "contains", true, "Specify a comma seperated list of strings to match each line against. Must contain one of the strings provided."));
+        options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         boolean stdoutLogs = false;
         try
@@ -55,9 +125,9 @@ public class LogSpoutMain
                 LogSpoutMain.settings = loadJSONObject(file);
             }
 
-            if (cmd.hasOption("c"))
+            if (cmd.hasOption("e"))
             {
-                LogSpoutMain.settings.put("_contains", new JSONArray(cmd.getOptionValue("c").split(Pattern.quote(","))));
+                LogSpoutMain.settings.put("_filter", cmd.getOptionValue("c"));
             }
 
             if (!LogSpoutMain.settings.has("hostname"))
@@ -79,14 +149,19 @@ public class LogSpoutMain
                 
             });
         }
-        lcc.connect();
-        APIWebServer apiWebServer = new APIWebServer(lcc);
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run()
-            {
-                lcc.disconnect();
-            }
-        });
+        if (lcc != null)
+        {
+            lcc.connect();
+            APIWebServer apiWebServer = new APIWebServer(lcc);
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                public void run()
+                {
+                    lcc.disconnect();
+                }
+            });
+        } else {
+            showHelp(options);
+        }
     }
     
     public static void showHelp(Options options)

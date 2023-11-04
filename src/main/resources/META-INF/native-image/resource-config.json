@@ -20,6 +20,9 @@
       "pattern":"\\Qlogspout/index.js\\E"
     }, 
     {
+      "pattern":"\\Qlogspout/ip.png\\E"
+    }, 
+    {
       "pattern":"\\Qlogspout/jquery.min.js\\E"
     }, 
     {

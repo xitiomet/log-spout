@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.Stack;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -98,9 +99,12 @@ public class APIWebServer implements Runnable, LogConnectionListener
 
     public void addHistory(JSONObject obj)
     {
-        this.packetHistory.add(obj);
-        if (this.packetHistory.size() > 1000)
-            this.packetHistory.remove(0);
+        if (obj != null)
+        {
+            this.packetHistory.add(obj);
+            if (this.packetHistory.size() > 1000)
+                this.packetHistory.remove(0);
+        }
     }
 
     public static ArrayList<String> getLogNames(LogConnection lc)
@@ -463,17 +467,11 @@ public class APIWebServer implements Runnable, LogConnectionListener
                                     {
                                         fitsFilter = true;
                                     } else {
-                                        String[] splitFilter = filter.split(Pattern.quote("||"));
-                                        if (splitFilter.length > 1)
+                                        try
                                         {
-                                            for(int i = 0; i < splitFilter.length; i++)
-                                            {
-                                                if (line.contains(splitFilter[i].trim()))
-                                                    fitsFilter = true;
-                                            }
-                                        } else {
-                                            if (line.contains(filter))
-                                                fitsFilter = true;
+                                            fitsFilter = LogSpoutMain.isMatch(line, filter);
+                                        } catch (Exception e2) {
+                                            e2.printStackTrace(System.err);
                                         }
                                     }
                                 } else {

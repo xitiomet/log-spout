@@ -25,9 +25,9 @@ public class LogConnectionParser
             for(int i = 0; i < sources.length(); i++)
             {
                 JSONObject source = sources.getJSONObject(i);
-                if (json.has("_contains"))
+                if (json.has("_filter"))
                 {
-                    source.put("_contains", json.get("_contains"));
+                    source.put("_filter", json.get("_filter"));
                 }
                 lcc.addLogConnection(parse(mergeCleanVariables(source, json)));
             }
@@ -53,9 +53,9 @@ public class LogConnectionParser
             for(int i = 0; i < sources.length(); i++)
             {
                 JSONObject source = sources.getJSONObject(i);
-                if (json.has("_contains"))
+                if (json.has("_filter"))
                 {
-                    source.put("_contains", json.get("_contains"));
+                    source.put("_filter", json.get("_filter"));
                 }
                 lcc.addLogConnection(parse(mergeCleanVariables(source, json)));
             }

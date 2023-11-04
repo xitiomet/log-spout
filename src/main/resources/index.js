@@ -74,8 +74,8 @@ function fitStuff()
     var terminalElement = document.getElementById('terminal');
     if (terminalElement != undefined)
     {
-        terminalElement.style.height = (window.innerHeight - 60) + 'px';
-        terminalElement.style.width = (window.innerWidth - 10) + 'px';
+        terminalElement.style.height = (window.innerHeight - 96) + 'px';
+        terminalElement.style.width = (window.innerWidth - 5) + 'px';
         setTimeout(() => {
             fitAddon.fit();
         },50);
@@ -130,11 +130,13 @@ function doAuth()
 
 function filterIp()
 {
+    document.getElementById('filterIp').enabled = false;
     $.get("https://ipv4.lafibre.info/ip.php").done((ipv4) => {
         $.get("https://ipv6.lafibre.info/ip.php").done((ipv6) => {
-            var filterText = ipv4 + ' || ' + ipv6;
+            var filterText = '(' + ipv4 + ' || ' + ipv6 + ')';
             document.getElementById('filterInput').value = filterText;
             updateFilter();
+            document.getElementById('filterIp').enabled = true;
         });
     });
     
@@ -213,6 +215,7 @@ function setupWebsocket()
                     runFakeTerminal();
                     fitStuff();
                     updateLog();
+                    updateFilter();
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'line') {

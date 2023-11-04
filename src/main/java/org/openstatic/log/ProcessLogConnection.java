@@ -119,7 +119,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
             while((line = br.readLine()) != null)
             {
                 final String fLine = line;
-                this.listeners.forEach((listener) -> {
+                ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
                     ArrayList<String> logPath = new ArrayList<String>();
                     logPath.add(this.getName());
                     listener.onLine(LogConnectionParser.replaceVariables(ProcessLogConnection.this.config.optString("_prefix",""), this.config) + fLine, logPath, ProcessLogConnection.this);
