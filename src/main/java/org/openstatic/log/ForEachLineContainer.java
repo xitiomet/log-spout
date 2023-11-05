@@ -98,11 +98,19 @@ public class ForEachLineContainer extends LogConnectionContainer
     @Override
     public void onLogDisconnectError(LogConnection connection, String err)
     {
-        if (this.connected)
-        {
-            if (LogSpoutMain.verbose)
-                System.err.println("Issue inside forEachLineContainer " + this.getName() + ", rebuilding! " + err);
-            this.connect();
-        }
+        (new Thread(() -> {
+            try
+            {
+                Thread.sleep(10000);
+                if (ForEachLineContainer.this.connected)
+                {
+                    if (LogSpoutMain.verbose)
+                        System.err.println("Issue inside forEachLineContainer " + this.getName() + ", rebuilding! " + err);
+                    ForEachLineContainer.this.connect();
+                }
+            } catch (Exception e) {
+                e.printStackTrace(System.err);
+            }
+        })).start();
     }
 }
