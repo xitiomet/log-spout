@@ -135,7 +135,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
             errMsg = "EOS";
         } catch (Exception e) {
             this.exception = e;
-            e.printStackTrace();
+            //e.printStackTrace();
         }
         if (!userDisconnect)
         {

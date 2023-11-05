@@ -20,6 +20,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         this.config = config;
         this.listeners = new ArrayList<LogConnectionListener>();
         this.connections = new ArrayList<LogConnection>();
+        this.connected = false;
     }
 
     @Override
@@ -42,7 +43,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         if (this.listeners.contains(listener))
             this.listeners.remove(listener);
-        if (this.listeners.size() == 0 && !connected)
+        if (this.listeners.size() == 0 && connected)
         {
             if (LogSpoutMain.verbose)
             {
