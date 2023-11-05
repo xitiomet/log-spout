@@ -49,13 +49,15 @@ public class ProcessLogConnection implements LogConnection, Runnable
     }
 
     @Override
-    public void addLogConnectionListener(LogConnectionListener listener) {
+    public void addLogConnectionListener(LogConnectionListener listener) 
+    {
         if (!this.listeners.contains(listener))
             this.listeners.add(listener);
     }
 
     @Override
-    public void removeLogConnectionListener(LogConnectionListener listener) {
+    public void removeLogConnectionListener(LogConnectionListener listener)
+    {
         if (this.listeners.contains(listener))
             this.listeners.remove(listener);
     }
@@ -159,5 +161,21 @@ public class ProcessLogConnection implements LogConnection, Runnable
     public String getType()
     {
         return "process";
+    }
+
+    @Override
+    public boolean isConnected()
+    {
+        if (this.thread != null)
+        {
+            if (this.thread.isAlive())
+                return this.inputStream != null;
+        }
+        return false;
+    }
+
+    @Override
+    public void start() {
+       
     }
 }

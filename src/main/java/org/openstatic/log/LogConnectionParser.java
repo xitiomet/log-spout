@@ -31,6 +31,7 @@ public class LogConnectionParser
                 }
                 lcc.addLogConnection(parse(mergeCleanVariables(source, json)));
             }
+            lcc.start();
             return lcc;
         }
         return null;

@@ -113,4 +113,10 @@ public class ForEachLineContainer extends LogConnectionContainer
             }
         })).start();
     }
+
+    @Override
+    public boolean isConnected()
+    {
+        return this.connected;
+    }
 }

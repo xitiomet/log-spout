@@ -14,6 +14,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     private ArrayList<LogConnection> connections;
     private JSONObject config;
     private boolean connected;
+    private boolean started;
 
     public LogConnectionContainer(JSONObject config)
     {
@@ -21,6 +22,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         this.listeners = new ArrayList<LogConnectionListener>();
         this.connections = new ArrayList<LogConnection>();
         this.connected = false;
+        this.started = false;
     }
 
     @Override
@@ -28,7 +30,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         if (!this.listeners.contains(listener))
             this.listeners.add(listener);
-        if (this.listeners.size() > 0 && !connected)
+        if (this.listeners.size() > 0 && !connected && started)
         {
             if (LogSpoutMain.verbose)
             {
@@ -43,7 +45,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         if (this.listeners.contains(listener))
             this.listeners.remove(listener);
-        if (this.listeners.size() == 0 && connected)
+        if (this.listeners.size() == 0 && connected && started)
         {
             if (LogSpoutMain.verbose)
             {
@@ -75,9 +77,21 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         ((ArrayList<LogConnection>) this.connections.clone()).forEach((c) -> {
             c.removeLogConnectionListener(LogConnectionContainer.this);
-            c.disconnect();
+            if (c.isConnected())
+                c.disconnect();
         });
         this.connections.clear();
+    }
+
+    @Override
+    public void start()
+    {
+        if (LogSpoutMain.verbose)
+        {
+            System.err.println("Starting: " + this.getName());
+        }
+        this.started = true;
+        ((ArrayList<LogConnection>) this.connections.clone()).forEach((c) -> c.start());
     }
 
     @Override
@@ -142,6 +156,11 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((l) -> {
             l.onLogDisconnectError(connection, err);
         });
+    }
+
+    @Override
+    public boolean isConnected() {
+        return this.connected;
     }
     
 }
