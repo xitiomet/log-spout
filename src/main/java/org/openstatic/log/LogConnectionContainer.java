@@ -14,7 +14,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     private ArrayList<LogConnection> connections;
     private JSONObject config;
     private boolean connected;
-    private boolean started;
+    private boolean started; // This flag means its ok to start and stop downstream connections based on listeners
 
     public LogConnectionContainer(JSONObject config)
     {
@@ -34,7 +34,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         {
             if (LogSpoutMain.verbose)
             {
-                System.err.println ("Connecting " + this.getName() + " We have listeners!");
+                System.err.println ("Connecting " + this.getName() + " (We have listeners!)");
             }
             this.connect();
         }
@@ -49,7 +49,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         {
             if (LogSpoutMain.verbose)
             {
-                System.err.println ("Disconnecting " + this.getName() + " due to no listeners!");
+                System.err.println ("Disconnecting " + this.getName() + " (no listeners!)");
             }
             this.disconnect();
         }
