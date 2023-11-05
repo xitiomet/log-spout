@@ -7,4 +7,5 @@ public interface LogConnection
     public void connect();
     public void disconnect();
     public String getName();
+    public String getType();
 }

@@ -9,6 +9,7 @@ import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Random;
@@ -31,6 +32,8 @@ public class LogSpoutMain
 {
     public static JSONObject settings;
     public static JexlEngine jexl;
+    public static boolean verbose = false;
+    public static APIWebServer apiWebServer;
 
     public static synchronized String generateBigAlphaKey(int key_length)
     {
@@ -96,7 +99,7 @@ public class LogSpoutMain
         org.eclipse.jetty.util.log.Log.setLog(new NoLogging());
         //System.setProperty("org.eclipse.jetty.util.log.class", "org.eclipse.jetty.util.log.StdErrLog");
         System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
-        System.setProperty("org.eclipse.jetty.server.Request.maxFormContentSize","1000000000");
+        //System.setProperty("org.eclipse.jetty.server.Request.maxFormContentSize","1000000000");
         
         CommandLine cmd = null;
         Options options = new Options();
@@ -106,6 +109,8 @@ public class LogSpoutMain
         options.addOption(new Option("f", "config", true, "Specify config file"));
         options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
+        options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
+
         boolean stdoutLogs = false;
         try
         {
@@ -118,6 +123,10 @@ public class LogSpoutMain
             if (cmd.hasOption("s"))
             {
                 stdoutLogs = true;
+            }
+            if (cmd.hasOption("v"))
+            {
+                LogSpoutMain.verbose = true;
             }
             if (cmd.hasOption("f"))
             {
@@ -146,21 +155,53 @@ public class LogSpoutMain
                 public void onLine(String line, ArrayList<String> logPath, LogConnection connection) {
                     System.err.println(line);
                 }
+
+                @Override
+                public void onLogDisconnectError(LogConnection connection, String err) {
+                    
+                }
                 
             });
         }
         if (lcc != null)
         {
             lcc.connect();
-            APIWebServer apiWebServer = new APIWebServer(lcc);
+            LogSpoutMain.apiWebServer = new APIWebServer(lcc);
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 public void run()
                 {
                     lcc.disconnect();
                 }
             });
+            showIPS();
         } else {
             showHelp(options);
+        }
+    }
+
+    public static void showIPS()
+    {
+        try
+        {
+            System.err.println("Web Interface:");
+            Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+            for (NetworkInterface netint : Collections.list(nets))
+            {
+                //System.err.println("Interface: " + netint.getDisplayName());
+                // Create a JmDNS instance
+                Enumeration<InetAddress> addresses = netint.getInetAddresses();
+                Collections.list(addresses).forEach((address) -> {
+                    if (address.isSiteLocalAddress())
+                    {
+                        try
+                        {
+                            System.err.println("  http://" + address.toString() + ":" + String.valueOf(LogSpoutMain.settings.optInt("apiPort", 8662)) + "/");
+                        } catch (Exception e) {}
+                    }
+                });
+            }
+        } catch (Exception e) {
+
         }
     }
     

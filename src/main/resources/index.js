@@ -133,8 +133,15 @@ function filterIp()
     document.getElementById('filterIp').enabled = false;
     $.get("https://ipv4.lafibre.info/ip.php").done((ipv4) => {
         $.get("https://ipv6.lafibre.info/ip.php").done((ipv6) => {
-            var filterText = '(' + ipv4 + ' || ' + ipv6 + ')';
-            document.getElementById('filterInput').value = filterText;
+            var filterInput = document.getElementById('filterInput');
+            if (filterInput.value == '')
+            {
+                var filterText = '(' + ipv4 + ' || ' + ipv6 + ')';
+                filterInput.value = filterText;
+            } else {
+                var filterText = '(' + filterInput.value + ') && (' + ipv4 + ' || ' + ipv6 + ')';
+                filterInput.value = filterText;
+            }
             updateFilter();
             document.getElementById('filterIp').enabled = true;
         });

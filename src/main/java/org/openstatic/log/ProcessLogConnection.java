@@ -11,6 +11,7 @@ import java.util.Iterator;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openstatic.LogSpoutMain;
 
 public class ProcessLogConnection implements LogConnection, Runnable
 {
@@ -20,10 +21,13 @@ public class ProcessLogConnection implements LogConnection, Runnable
     private Thread thread;
     private InputStream inputStream;
     private JSONObject config;
+    private boolean userDisconnect;
     private ArrayList<String> commandArray;
+    private Exception exception;
 
     public ProcessLogConnection(JSONObject config)
     {
+        this.userDisconnect = false;
         //System.err.println("Process: " + config.toString());
         JSONArray command = config.optJSONArray("_execute");
         this.commandArray = new ArrayList<String>();
@@ -44,12 +48,6 @@ public class ProcessLogConnection implements LogConnection, Runnable
         this.processBuilder = new ProcessBuilder(this.commandArray);
     }
 
-    public ProcessLogConnection(ProcessBuilder processBuilder)
-    {
-        this.listeners = new ArrayList<LogConnectionListener>();
-        this.processBuilder = processBuilder;
-    }
-
     @Override
     public void addLogConnectionListener(LogConnectionListener listener) {
         if (!this.listeners.contains(listener))
@@ -67,6 +65,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
     {
         try
         {
+            this.userDisconnect = false;
             if (this.process != null)
             {
                 if (!process.isAlive())
@@ -76,7 +75,8 @@ public class ProcessLogConnection implements LogConnection, Runnable
             } else {
                 this.process = this.processBuilder.start();
             }
-            System.err.println("Launched: " + this.commandArray.stream().collect(Collectors.joining(" ")));
+            if (LogSpoutMain.verbose)
+                System.err.println("Launched: " + this.commandArray.stream().collect(Collectors.joining(" ")));
             this.inputStream = this.process.getInputStream();
             if (this.thread == null)
             {
@@ -90,6 +90,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
                 }
             }
         } catch (Exception e) {
+            this.exception = e;
             e.printStackTrace(System.err);
         }
     }
@@ -99,10 +100,12 @@ public class ProcessLogConnection implements LogConnection, Runnable
     {
         try
         {
+            this.userDisconnect = true;
             this.process.destroy();
             this.inputStream.close();
             this.inputStream = null;
-            System.err.println("Terminated: " + this.commandArray.stream().collect(Collectors.joining(" ")));
+            if (LogSpoutMain.verbose)
+                System.err.println("Terminated: " + this.commandArray.stream().collect(Collectors.joining(" ")));
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
@@ -111,6 +114,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
     @Override
     public void run()
     {
+        String errMsg = "";
         InputStreamReader isr = new InputStreamReader(this.inputStream);
         BufferedReader br = new BufferedReader(isr);
         String line;
@@ -124,17 +128,37 @@ public class ProcessLogConnection implements LogConnection, Runnable
                     logPath.add(this.getName());
                     listener.onLine(LogConnectionParser.replaceVariables(ProcessLogConnection.this.config.optString("_prefix",""), this.config) + fLine, logPath, ProcessLogConnection.this);
                 });
-                
             }
+            errMsg = "EOS";
         } catch (Exception e) {
+            this.exception = e;
             e.printStackTrace();
+        }
+        if (!userDisconnect)
+        {
+            if (this.exception != null)
+                errMsg = this.exception.toString() + " - " + this.exception.getMessage();
+            if (LogSpoutMain.verbose)
+            {
+                System.err.println("DISC ERR: " + this.getName() + " " + errMsg);
+            }
+            final String fErrMsg = errMsg;
+            ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
+                listener.onLogDisconnectError(this, fErrMsg);
+            });
         }
         //System.err.println("PROC END");
     }
 
     @Override
-    public String getName() {
-        return this.config.optString("_name", "");
+    public String getName()
+    {
+        return LogConnectionParser.replaceVariables(this.config.optString("_name", ""), config);
     }
     
+    @Override
+    public String getType()
+    {
+        return "process";
+    }
 }

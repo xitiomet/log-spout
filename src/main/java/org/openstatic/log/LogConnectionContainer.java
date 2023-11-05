@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import java.util.Collection;
 
-import org.apache.commons.logging.LogSource;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openstatic.LogSpoutMain;
@@ -54,6 +53,12 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         }
     }
 
+    public void clearAllLogConnections() 
+    {
+        this.connections.forEach((c) -> c.disconnect());
+        this.connections.clear();
+    }
+
     @Override
     public void connect() 
     {
@@ -99,6 +104,20 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         return this.config.optString("_name", "Untitled Container");
 
+    }
+
+    @Override
+    public String getType() 
+    {
+        return this.config.optString("_type", "container");
+
+    }
+
+    @Override
+    public void onLogDisconnectError(LogConnection connection, String err) {
+        ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((l) -> {
+            l.onLogDisconnectError(connection, err);
+        });
     }
     
 }

@@ -43,7 +43,7 @@ public class LogConnectionParser
             String type = json.getString("_type");
             if (type.equals("forEachLine"))
             {
-                return forEachLine(json);
+                return new ForEachLineContainer(json);
             } else if (type.equals("process")) {
                 return new ProcessLogConnection(json);
             }
@@ -64,28 +64,7 @@ public class LogConnectionParser
         return null;
     }
 
-    public static LogConnectionContainer forEachLine(JSONObject config)
-    {
-        //System.err.println("ForEachLine: " + config.toString());
-        LogConnectionContainer lcc = new LogConnectionContainer(config);
-        ArrayList<String> forEachValues = null;
-        if (config.has("_execute"))
-        {
-            forEachValues = executeForEach(config.getJSONArray("_execute"), cleanVariables(config));
-        }
-        if (forEachValues != null && config.has("_source"))
-        {
-            forEachValues.forEach((val) -> {
-                JSONObject source = mergeCleanVariables(config.getJSONObject("_source"), config);
-                source.put("line", val);
-                lcc.addLogConnection(parse(source));
-            });
-        }
-        return lcc;
-    }
-
-
-    private static JSONObject mergeCleanVariables(JSONObject config, JSONObject variables)
+    public static JSONObject mergeCleanVariables(JSONObject config, JSONObject variables)
     {
         JSONObject j = new JSONObject(config.toString());
         Set<String> keySet = variables.keySet();
@@ -100,7 +79,7 @@ public class LogConnectionParser
         return j;
     }
 
-    private static JSONObject cleanVariables(JSONObject variables)
+    public static JSONObject cleanVariables(JSONObject variables)
     {
         JSONObject j = new JSONObject();
         Set<String> keySet = variables.keySet();
@@ -127,37 +106,5 @@ public class LogConnectionParser
         return cs;
     }
 
-    public static ArrayList<String> executeForEach(JSONArray command, JSONObject varContext)
-    {
-        final ArrayList<String> commandArray = new ArrayList<String>();
-        for(int i = 0; i < command.length(); i++)
-        {
-            String cs = command.getString(i);
-            commandArray.add(replaceVariables(cs, varContext));
-        }
-        //System.err.println("CommandArray: " + commandArray.stream().collect(Collectors.joining(" ")));
-        ProcessBuilder processBuilder = new ProcessBuilder(commandArray);
-        ArrayList<String> results = new ArrayList<String>();
-        try
-        {
-            Process p = processBuilder.redirectErrorStream(true).start();
-            InputStream is = p.getInputStream();
-            InputStreamReader isr = new InputStreamReader(is);
-            BufferedReader br = new BufferedReader(isr);
-            String line;
-            while((line = br.readLine()) != null)
-            {
-                try
-                {
-                    results.add(line);
-                    //System.err.println("line: " + line);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return results;
-    }
+    
 }

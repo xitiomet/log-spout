@@ -78,6 +78,15 @@ public class APIWebServer implements Runnable, LogConnectionListener
         this.logConnections.addLogConnectionListener(this);
     }
 
+    public void replaceLogConnectionContainer(LogConnectionContainer lc)
+    {
+        if (this.logConnections != null)
+        {
+            this.logConnections.disconnect();
+        }
+        this.logConnections = lc;
+    }
+
     public static synchronized String generateBigAlphaKey(int key_length)
     {
         try
@@ -176,8 +185,12 @@ public class APIWebServer implements Runnable, LogConnectionListener
                     historyRequest = this.packetHistory.size();
                 for(int i = this.packetHistory.size() - historyRequest; i < this.packetHistory.size(); i++)
                 {
-                    String histPacket = this.packetHistory.get(i).toString();
-                    session.getRemote().sendStringByFuture(histPacket);
+                    JSONObject hp = this.packetHistory.get(i);
+                    if (hp != null)
+                    {
+                        String histPacket = hp.toString();
+                        session.getRemote().sendStringByFuture(histPacket);
+                    }
                 }
             } else if (j.has("filter")) {
                 sessionProperties.put("filter", j.optString("filter", ""));
@@ -488,5 +501,10 @@ public class APIWebServer implements Runnable, LogConnectionListener
             }
         }
         addHistory(jo);
+    }
+
+    @Override
+    public void onLogDisconnectError(LogConnection connection, String err) {
+        
     }
 }
