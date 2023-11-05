@@ -12,16 +12,19 @@ import org.openstatic.LogSpoutMain;
 public class ForEachLineContainer extends LogConnectionContainer
 {
     private JSONObject config;
+    private boolean connected;
 
     public ForEachLineContainer(JSONObject config)
     {
         super(config);
-        this.config = config;    
+        this.config = config;  
+        this.connected = false;  
     }
 
     @Override
     public void connect()
     {
+        this.connected = true;
         this.clearAllLogConnections();
         ArrayList<String> forEachValues = null;
         if (config.has("_execute"))
@@ -37,11 +40,19 @@ public class ForEachLineContainer extends LogConnectionContainer
             forEachValues.forEach((val) -> {
                 JSONObject source = LogConnectionParser.mergeCleanVariables(config.getJSONObject("_source"), config);
                 source.put("line", val);
+                source.put("_name",this.getName() + " (" + val + ")");
                 LogConnection con = LogConnectionParser.parse(source);
                 this.addLogConnection(con);
                 con.connect();
             });
         }
+    }
+
+    @Override
+    public void disconnect()
+    {
+        this.connected = false;
+        super.disconnect();
     }
 
     @Override
@@ -87,8 +98,11 @@ public class ForEachLineContainer extends LogConnectionContainer
     @Override
     public void onLogDisconnectError(LogConnection connection, String err)
     {
-        if (LogSpoutMain.verbose)
-            System.err.println("Issue inside forEachLineContainer " + this.getName() + ", rebuilding! " + err);
-        this.connect();
+        if (this.connected)
+        {
+            if (LogSpoutMain.verbose)
+                System.err.println("Issue inside forEachLineContainer " + this.getName() + ", rebuilding! " + err);
+            this.connect();
+        }
     }
 }

@@ -55,20 +55,23 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
 
     public void clearAllLogConnections() 
     {
-        this.connections.forEach((c) -> c.disconnect());
+        ((ArrayList<LogConnection>) this.connections.clone()).forEach((c) -> {
+            c.removeLogConnectionListener(LogConnectionContainer.this);
+            c.disconnect();
+        });
         this.connections.clear();
     }
 
     @Override
     public void connect() 
     {
-        this.connections.forEach((c) -> c.connect());
+        ((ArrayList<LogConnection>) this.connections.clone()).forEach((c) -> c.connect());
     }
 
     @Override
     public void disconnect() 
     {
-        this.connections.forEach((c) -> c.disconnect());
+        ((ArrayList<LogConnection>) this.connections.clone()).forEach((c) -> c.disconnect());
     }
 
     public Collection<LogConnection> getLogConnections()
@@ -114,7 +117,8 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     }
 
     @Override
-    public void onLogDisconnectError(LogConnection connection, String err) {
+    public void onLogDisconnectError(LogConnection connection, String err) 
+    {
         ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((l) -> {
             l.onLogDisconnectError(connection, err);
         });

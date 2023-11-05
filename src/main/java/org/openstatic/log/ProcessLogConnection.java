@@ -102,7 +102,10 @@ public class ProcessLogConnection implements LogConnection, Runnable
         {
             this.userDisconnect = true;
             this.process.destroy();
-            this.inputStream.close();
+            if (this.inputStream != null)
+            {
+                this.inputStream.close();
+            }
             this.inputStream = null;
             if (LogSpoutMain.verbose)
                 System.err.println("Terminated: " + this.commandArray.stream().collect(Collectors.joining(" ")));
@@ -138,10 +141,6 @@ public class ProcessLogConnection implements LogConnection, Runnable
         {
             if (this.exception != null)
                 errMsg = this.exception.toString() + " - " + this.exception.getMessage();
-            if (LogSpoutMain.verbose)
-            {
-                System.err.println("DISC ERR: " + this.getName() + " " + errMsg);
-            }
             final String fErrMsg = errMsg;
             ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
                 listener.onLogDisconnectError(this, fErrMsg);
