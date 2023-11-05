@@ -310,6 +310,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
                 } else {
                     JSONObject hostJsonObject = new JSONObject();
                     hostJsonObject.put("hostname", LogSpoutMain.settings.optString("hostname", "LOGSPOUT"));
+                    hostJsonObject.put("name", APIWebServer.instance.logConnections.getName());
                     session.getRemote().sendStringByFuture(hostJsonObject.toString());
                 }
                 APIWebServer.instance.sessionProps.put(wssession, sessionProperties);

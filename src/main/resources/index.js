@@ -188,6 +188,7 @@ function setupWebsocket()
             if (jsonObject.hasOwnProperty("name"))
             {
                 document.getElementById('instancename').innerHTML = jsonObject.name;
+                document.getElementById('instancenamelogin').innerHTML = jsonObject.name;
             }
             if (jsonObject.hasOwnProperty("action"))
             {
@@ -196,6 +197,7 @@ function setupWebsocket()
                     hostname = jsonObject.hostname;
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('terminalScreen').style.display = 'block';
+                    document.getElementById('topBar').style.display = 'block';
                     document.getElementById('filterInput').style.display = 'inline-block';
                     document.getElementById('logs').style.display = 'inline-block';
                     document.getElementById('filterIp').style.display = 'inline-block';
