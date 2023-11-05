@@ -75,7 +75,6 @@ public class APIWebServer implements Runnable, LogConnectionListener
         }
         this.pingPongThread = new Thread(this);
         this.pingPongThread.start();
-        this.logConnections.addLogConnectionListener(this);
     }
 
     public void replaceLogConnectionContainer(LogConnectionContainer lc)
@@ -272,6 +271,16 @@ public class APIWebServer implements Runnable, LogConnectionListener
         }
     }
 
+    public void checkConnectionsCount()
+    {
+        if (this.wsSessions.size() > 0)
+        {
+            this.logConnections.addLogConnectionListener(this);
+        } else {
+            this.logConnections.removeLogConnectionListener(this);
+        }
+    }
+
     @WebSocket
     public static class EventsWebSocket {
 
@@ -298,6 +307,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
                 WebSocketSession wssession = (WebSocketSession) session;
                 //System.out.println(wssession.getRemoteAddress().getHostString() + " connected!");
                 APIWebServer.instance.wsSessions.add(wssession);
+                APIWebServer.instance.checkConnectionsCount();
                 JSONObject sessionProperties = new JSONObject();
                 String settingPassword = LogSpoutMain.settings.optString("apiPassword","");
 
@@ -325,6 +335,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
             if (session instanceof WebSocketSession) {
                 WebSocketSession wssession = (WebSocketSession) session;
                 APIWebServer.instance.wsSessions.remove(wssession);
+                APIWebServer.instance.checkConnectionsCount();
                 APIWebServer.instance.sessionProps.remove(wssession);
             }
         }

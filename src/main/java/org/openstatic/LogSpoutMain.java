@@ -165,7 +165,6 @@ public class LogSpoutMain
         }
         if (lcc != null)
         {
-            lcc.connect();
             LogSpoutMain.apiWebServer = new APIWebServer(lcc);
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 public void run()

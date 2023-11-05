@@ -13,6 +13,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     private ArrayList<LogConnectionListener> listeners;
     private ArrayList<LogConnection> connections;
     private JSONObject config;
+    private boolean connected;
 
     public LogConnectionContainer(JSONObject config)
     {
@@ -26,6 +27,14 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         if (!this.listeners.contains(listener))
             this.listeners.add(listener);
+        if (this.listeners.size() > 0 && !connected)
+        {
+            if (LogSpoutMain.verbose)
+            {
+                System.err.println ("Connecting " + this.getName() + " We have listeners!");
+            }
+            this.connect();
+        }
     }
 
     @Override
@@ -33,6 +42,14 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         if (this.listeners.contains(listener))
             this.listeners.remove(listener);
+        if (this.listeners.size() == 0 && !connected)
+        {
+            if (LogSpoutMain.verbose)
+            {
+                System.err.println ("Disconnecting " + this.getName() + " due to no listeners!");
+            }
+            this.disconnect();
+        }
     }
 
     public void addLogConnection(LogConnection connection) 
@@ -65,12 +82,14 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     @Override
     public void connect() 
     {
+        this.connected = true;
         ((ArrayList<LogConnection>) this.connections.clone()).forEach((c) -> c.connect());
     }
 
     @Override
     public void disconnect() 
     {
+        this.connected = false;
         ((ArrayList<LogConnection>) this.connections.clone()).forEach((c) -> c.disconnect());
     }
 
