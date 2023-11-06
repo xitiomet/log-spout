@@ -11,6 +11,9 @@
       "pattern":"\\Qlogspout/about.png\\E"
     }, 
     {
+      "pattern":"\\Qlogspout/icon-128.png\\E"
+    }, 
+    {
       "pattern":"\\Qlogspout/icon-32.png\\E"
     }, 
     {

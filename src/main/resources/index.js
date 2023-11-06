@@ -188,6 +188,8 @@ function setupWebsocket()
             if (jsonObject.hasOwnProperty("name"))
             {
                 document.getElementById('instancename').innerHTML = jsonObject.name;
+                document.getElementById('password_row').style.display = 'table-row';
+                document.getElementById('login_row').style.display = 'table-row';
                 document.getElementById('instancenamelogin').innerHTML = jsonObject.name;
             }
             if (jsonObject.hasOwnProperty("action"))
