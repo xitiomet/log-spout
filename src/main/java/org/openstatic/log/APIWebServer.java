@@ -161,7 +161,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
                 } else {
                     JSONObject errorJsonObject = new JSONObject();
                     errorJsonObject.put("action", "authFail");
-                    errorJsonObject.put("error", "Invalid apiPassword!");
+                    errorJsonObject.put("error", "Invalid Password!");
                     session.getRemote().sendStringByFuture(errorJsonObject.toString());
                 }
             } else if (j.has("termAuth")) {
