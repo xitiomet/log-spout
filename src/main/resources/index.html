@@ -183,10 +183,11 @@
                   <td style="color: white; font-size: 20px;" align="left">Log Spout - <span id="instancename"></span></td>
 
                   <td style="padding-right: 9px;" align="right">
-                    <label class="switch" title="Run/Pause" style="position: absolute; right: 128px; top: 6px;">
-                      <input type="checkbox" id="autoscroll" name="autoscroll" checked />
+                    <label class="switch" title="Run/Pause" style="position: absolute; right: 156px; top: 6px;">
+                      <input type="checkbox" id="autoscroll" name="autoscroll" checked onchange="enableSwitch()"" />
                       <span class="slider round"></span>
                     </label>
+                    <img src="eraser-32.png" id="eraser" style="width: 32px; height: 32px; display: none;" title="Clear Log" onclick="clearLog()" />
                     <img src="ip.png" id="filterIp" style="width: 32px; height: 32px; display: none;" title="Filter by my ip" onclick="filterIp()" />
                     <img src="about.png" id="aboutIcon" style="width: 32px; height: 32px;" title="About" onclick="window.open('https://openstatic.org/projects/logspout/', '_blank');" />
                     <img src="led-grey.svg" id="greyLed" style="width: 32px; height: 32px;" title="Disconnected" />

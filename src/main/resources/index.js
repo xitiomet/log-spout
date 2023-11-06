@@ -10,6 +10,7 @@ var port = location.port;
 var wsProtocol = 'ws';
 var httpUrl = '';
 var termAuth = '';
+var appendEnabled = true;
 
 function getParameterByName(name, url = window.location.href) 
 {
@@ -87,6 +88,15 @@ window.onresize = function() {
     fitStuff();
 }
 
+function enableSwitch()
+{
+    appendEnabled = document.getElementById('autoscroll').checked;
+    if (appendEnabled)
+    {
+        term.scrollToBottom();
+    }
+}
+
 function runFakeTerminal() 
 {
     if (term._initialized) {
@@ -112,6 +122,11 @@ function updateFilter()
 {
     var filter = document.getElementById('filterInput').value;
     sendEvent({"filter": filter});
+}
+
+function clearLog()
+{
+    term.reset();
 }
 
 function updateLog()
@@ -159,7 +174,7 @@ function setupWebsocket()
             hostname = '172.19.191.115';
             protocol = 'http';
             port = 8662;
-            httpUrl = "http://" + hostname + ":8662/";
+            httpUrl = "http://" + hostname + ":" + port + "/";
         }
         if (protocol.startsWith('https'))
         {
@@ -203,6 +218,7 @@ function setupWebsocket()
                     document.getElementById('filterInput').style.display = 'inline-block';
                     document.getElementById('logs').style.display = 'inline-block';
                     document.getElementById('filterIp').style.display = 'inline-block';
+                    document.getElementById('eraser').style.display = 'inline-block';
                     var logsSelector = document.getElementById('logs');
                     logsSelector.innerHTML = "";
                     var first = true;
@@ -230,10 +246,9 @@ function setupWebsocket()
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'line') {
-                    if (document.getElementById('autoscroll').checked)
+                    if (appendEnabled)
                     {
                         term.writeln(jsonObject.line);
-                        term.scrollToBottom();
                     }
                 }
             }
