@@ -229,9 +229,12 @@ public class APIWebServer implements Runnable, LogConnectionListener
             try
             {
                 JSONObject sessionProps = this.sessionProps.get(s);
-                if (sessionProps.optBoolean("auth", false))
+                if (sessionProps != null)
                 {
-                    s.getRemote().sendStringByFuture(message);
+                    if (sessionProps.optBoolean("auth", false))
+                    {
+                        s.getRemote().sendStringByFuture(message);
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace(System.err);

@@ -146,8 +146,8 @@ function doAuth()
 function filterIp()
 {
     document.getElementById('filterIp').enabled = false;
-    $.get("https://ipv4.lafibre.info/ip.php").done((ipv4) => {
-        $.get("https://ipv6.lafibre.info/ip.php").done((ipv6) => {
+    $.get("https://ipv4.openstatic.org/ip/").done((ipv4) => {
+        $.get("https://ipv6.openstatic.org/ip/").done((ipv6) => {
             var filterInput = document.getElementById('filterInput');
             if (filterInput.value == '')
             {
