@@ -211,7 +211,7 @@ function setupWebsocket()
             {
                 var action = jsonObject.action;
                 if (action == 'authOk') {
-                    hostname = jsonObject.hostname;
+                    //hostname = jsonObject.hostname;
                     document.getElementById('login').style.display = 'none';
                     document.getElementById('terminalScreen').style.display = 'block';
                     document.getElementById('topBar').style.display = 'block';
