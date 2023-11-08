@@ -1,6 +1,5 @@
 package org.openstatic;
 
-import java.beans.Expression;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -13,7 +12,6 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Random;
-import java.util.Stack;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -117,6 +115,9 @@ public class LogSpoutMain
         options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
+        Option apiOption = new Option("a", "api", true, "Turn on api server, optional argument to specify port (default 8662)");
+        apiOption.setOptionalArg(true);
+        options.addOption(apiOption);
 
         boolean stdoutLogs = false;
         try
@@ -162,6 +163,11 @@ public class LogSpoutMain
                 LogSpoutMain.settings.put("_filter", cmd.getOptionValue("c"));
             }
 
+            if (cmd.hasOption("a"))
+            {
+                LogSpoutMain.settings.put("apiPort", Integer.valueOf(cmd.getOptionValue("a", "8662")));
+            }
+
             if (!LogSpoutMain.settings.has("hostname"))
             {
                 LogSpoutMain.settings.put("hostname", getLocalHostname());
@@ -186,7 +192,7 @@ public class LogSpoutMain
                 
             });
         }
-        if (lcc != null)
+        if (lcc != null && (settings.has("apiPort") || settings.has("apiPassword")))
         {
             LogSpoutMain.apiWebServer = new APIWebServer(lcc);
             Runtime.getRuntime().addShutdownHook(new Thread() {

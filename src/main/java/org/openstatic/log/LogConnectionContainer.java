@@ -3,6 +3,8 @@ package org.openstatic.log;
 import java.util.ArrayList;
 
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -117,6 +119,8 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     public void onLine(String line, ArrayList<String> logPath, LogConnection connection)
     {
         boolean flag = false;
+        String linePrefix = "";
+        String lineSuffix = "";
         if (this.config.has("_filter"))
         {
             String filter = this.config.optString("_filter");
@@ -124,9 +128,24 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         } else {
             flag = true;
         }
+        if (this.config.has("_highlight"))
+        {
+            JSONObject rules = this.config.getJSONObject("_highlight");
+            Set<String> keySet = rules.keySet();
+            Iterator<String> keyIterator = keySet.iterator();
+            while(keyIterator.hasNext())
+            {
+                String key = keyIterator.next();
+                if (line.contains(key))
+                {
+                    linePrefix = "\u001b[" + rules.getString(key) + "m";
+                    lineSuffix = "\u001b[0m";
+                }
+            }
+        }
         if (flag)
         {
-            final String finalLine = LogConnectionParser.replaceVariables(this.config.optString("_prefix",""), this.config) + line;
+            final String finalLine = (linePrefix + line + lineSuffix);
             ArrayList<String> newLogPath = new ArrayList<String>();
             newLogPath.add(this.getName());
             newLogPath.addAll(logPath);
