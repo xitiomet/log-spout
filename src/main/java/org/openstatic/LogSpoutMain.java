@@ -137,8 +137,24 @@ public class LogSpoutMain
             }
             if (cmd.hasOption("f"))
             {
-                File file = new File(cmd.getOptionValue("f"));
-                LogSpoutMain.settings = loadJSONObject(file);
+                String filename = cmd.getOptionValue("f");
+                File file = new File(filename);
+                if (file.exists())
+                {
+                    LogSpoutMain.settings = loadJSONObject(file);
+                } else {
+                    System.err.println("Cannot load file: " + filename);
+                    System.exit(0);
+                }
+            } else {
+                File file = new File("./.log-spout.json");
+                if (file.exists())
+                {
+                    LogSpoutMain.settings = loadJSONObject(file);
+                } else {
+                    showHelp(options);
+                    System.exit(0);
+                }
             }
 
             if (cmd.hasOption("e"))
