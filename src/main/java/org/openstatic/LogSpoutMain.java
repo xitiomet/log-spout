@@ -72,9 +72,16 @@ public class LogSpoutMain
                         //Ignore
                     } else {
                         String var = generateBigAlphaKey(3);
-                        boolean contained = line.contains(el);
-                        jexlContext.set(var, contained);
-                        newFilter = newFilter.replaceAll(Pattern.quote(el),var);
+                        if (el.startsWith("!"))
+                        {
+                            boolean contained = !line.contains(el.substring(1));
+                            jexlContext.set(var, contained);
+                            newFilter = newFilter.replaceAll(Pattern.quote(el),var);
+                        } else {
+                            boolean contained = line.contains(el);
+                            jexlContext.set(var, contained);
+                            newFilter = newFilter.replaceAll(Pattern.quote(el),var);
+                        }
                     }
                 }
                 JexlExpression expression = jexl.createExpression(newFilter);
