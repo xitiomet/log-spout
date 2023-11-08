@@ -138,7 +138,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
                 String key = keyIterator.next();
                 if (line.contains(key))
                 {
-                    linePrefix = "\u001b[" + rules.getString(key) + "m";
+                    linePrefix = rules.getString(key);
                     lineSuffix = "\u001b[0m";
                 }
             }
