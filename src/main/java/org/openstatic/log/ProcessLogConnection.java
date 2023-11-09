@@ -12,6 +12,7 @@ import java.util.Iterator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openstatic.LogSpoutMain;
+import org.apache.commons.text.StringEscapeUtils;
 
 public class ProcessLogConnection implements LogConnection, Runnable
 {
@@ -127,7 +128,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
         {
             while((line = br.readLine()) != null)
             {
-                final String fLine = line;
+                final String fLine = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\u00"));
                 ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
                     ArrayList<String> logPath = new ArrayList<String>();
                     logPath.add(this.getName());
