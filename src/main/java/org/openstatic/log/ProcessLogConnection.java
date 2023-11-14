@@ -130,9 +130,9 @@ public class ProcessLogConnection implements LogConnection, Runnable
         {
             while((line = br.readLine()) != null)
             {
-                if (this.config.optBoolean("unescape", true))
+                if (this.config.optBoolean("_unescape", true))
                     line = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\\\u00"));
-                if (this.config.optBoolean("urldecode", false))
+                if (this.config.optBoolean("_urldecode", false))
                     line = URLDecoder.decode(line,Charset.forName("UTF-8"));
                 final String fLine = line;
                 ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
