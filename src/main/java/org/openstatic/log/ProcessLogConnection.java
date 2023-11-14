@@ -3,6 +3,8 @@ package org.openstatic.log;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -128,7 +130,11 @@ public class ProcessLogConnection implements LogConnection, Runnable
         {
             while((line = br.readLine()) != null)
             {
-                final String fLine = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\\\u00"));
+                if (this.config.optBoolean("unescape", true))
+                    line = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\\\u00"));
+                if (this.config.optBoolean("urldecode", false))
+                    line = URLDecoder.decode(line,Charset.forName("UTF-8"));
+                final String fLine = line;
                 ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
                     ArrayList<String> logPath = new ArrayList<String>();
                     logPath.add(this.getName());
