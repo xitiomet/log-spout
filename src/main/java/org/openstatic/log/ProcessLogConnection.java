@@ -130,11 +130,28 @@ public class ProcessLogConnection implements LogConnection, Runnable
         {
             while((line = br.readLine()) != null)
             {
+                String linePrefix = "";
+                String lineSuffix = "";
                 if (this.config.optBoolean("_unescape", true))
                     line = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\\\u00"));
                 if (this.config.optBoolean("_urldecode", false))
                     line = URLDecoder.decode(line,Charset.forName("UTF-8"));
-                final String fLine = line;
+                if (this.config.has("_highlight"))
+                {
+                    JSONObject rules = this.config.getJSONObject("_highlight");
+                    Set<String> keySet = rules.keySet();
+                    Iterator<String> keyIterator = keySet.iterator();
+                    while(keyIterator.hasNext())
+                    {
+                        String key = keyIterator.next();
+                        if (line.contains(key))
+                        {
+                            linePrefix = rules.getString(key);
+                            lineSuffix = "\u001b[0m";
+                        }
+                    }
+                }
+                final String fLine = linePrefix + line + lineSuffix;
                 ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
                     ArrayList<String> logPath = new ArrayList<String>();
                     logPath.add(this.getName());
