@@ -207,6 +207,7 @@ public class LogSpoutMain
                         }
                     }).collect(Collectors.joining(" "));
                     pw.println(lsCommand);
+                    pw.flush();
                     fos.close();
                     shellExec(new String[] {"chmod","+x",filename.toString()});
                     System.exit(0);
