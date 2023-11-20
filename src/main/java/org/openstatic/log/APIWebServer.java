@@ -120,18 +120,21 @@ public class APIWebServer implements Runnable, LogConnectionListener
     public static LinkedHashSet<String> getLogNames(LogConnection lc)
     {
         final LinkedHashSet<String> rl = new LinkedHashSet<String>();
-        String lName = lc.getName();
-        if (!"".equals(lName))
-        {
-            rl.add(lName);
-        }
-        rl.addAll(lc.getContainedNames());
+       
         if (lc instanceof LogConnectionContainer)
         {
             LogConnectionContainer lcc = (LogConnectionContainer) lc;
+            rl.add(lcc.getName());
             lcc.getLogConnections().forEach((slc) -> {
                 rl.addAll(getLogNames(slc));
             });
+        } else {
+            String lName = lc.getName();
+            if (!"".equals(lName))
+            {
+                rl.add(lName);
+            }
+            rl.addAll(lc.getContainedNames());
         }
         return rl;
     }

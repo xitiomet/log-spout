@@ -118,7 +118,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
     @Override
     public String getName()
     {
-        return LogConnectionParser.replaceVariables(this.config.optString("_name", ""), config);
+        return LogConnectionParser.replaceVariables(this.config.optString("_name", this.wsUrl), config);
     }
 
     @Override
