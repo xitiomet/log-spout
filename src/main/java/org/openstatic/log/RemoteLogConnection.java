@@ -76,7 +76,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
                 this.webSocketClient.connect(socket, echoUri, request);
                 //System.out.printf("Connecting to : %s%n", echoUri);
             } catch (Exception e) {
-                e.printStackTrace(System.err);
+                //e.printStackTrace(System.err);
             }
         }
     }
@@ -88,11 +88,9 @@ public class RemoteLogConnection implements LogConnection, Runnable
             try
             {
                 String textData = data.toString();
-                if (LogSpoutMain.verbose)
-                    System.err.println("Transmit: " + textData);
                 this.session.getRemote().sendStringByFuture(textData);
             } catch (Exception e) {
-                e.printStackTrace(System.err);
+                //e.printStackTrace(System.err);
             }
         }
     }
@@ -112,7 +110,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
         {
             RemoteLogConnection.this.webSocketClient.start();
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            //e.printStackTrace(System.err);
         }
     }
 
@@ -175,8 +173,6 @@ public class RemoteLogConnection implements LogConnection, Runnable
         @OnWebSocketMessage
         public void onText(Session session, String message) throws IOException {
             try {
-                if (LogSpoutMain.verbose)
-                    System.err.println("Rx: " + message);
                 final JSONObject jo = new JSONObject(message);
                 if (jo.has("action"))
                 {
@@ -214,7 +210,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
                         }
                 }
             } catch (Exception e) {
-                e.printStackTrace(System.err);
+                //e.printStackTrace(System.err);
             }
         }
 
@@ -239,7 +235,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
         @OnWebSocketError
         public void onError(Throwable e) 
         {
-            e.printStackTrace(System.err);
+            //e.printStackTrace(System.err);
             RemoteLogConnection.this.close();
             RemoteLogConnection.this.session = null;
         }
@@ -261,7 +257,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
                     this.connect();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                //e.printStackTrace();
             }
         }
         try
@@ -270,7 +266,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
             this.webSocketClient.stop();
             //System.err.println("DONE");
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            //e.printStackTrace(System.err);
         }
         //System.err.println("RemoteLogConnection - Exiting Keep Alive Thread!");        
     }
