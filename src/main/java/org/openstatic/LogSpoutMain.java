@@ -9,8 +9,10 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
@@ -195,17 +197,17 @@ public class LogSpoutMain
                     PrintWriter pw = new PrintWriter(fos);
                     pw.println("#/bin/bash");
                     String lsCommand = "log-spout";
-                    lsCommand += cmd.getArgList().stream().map((arg) -> {
-                        if (!"g".equals(arg))
+                    ArrayList<String> argsCollection = new ArrayList<String>(Arrays.asList(args));
+                    for(Iterator<String> iterator = argsCollection.iterator(); iterator.hasNext(); )
+                    {
+                        String nextArg = iterator.next();
+                        if (!"-g".equals(nextArg) && !"--generate".equals(nextArg))
                         {
-                            if (options.getOption(arg).hasArg())
-                                return " -" + arg + " " + cmd.getOptionValue(arg);
-                            else
-                                return " -" + arg;
-                        } else {
-                            return "";
+                            lsCommand += " " + nextArg;
+                        } else if (iterator.hasNext()) {
+                            iterator.next();
                         }
-                    }).collect(Collectors.joining(" "));
+                    }
                     pw.println(lsCommand);
                     pw.flush();
                     fos.close();
