@@ -195,7 +195,7 @@ public class LogSpoutMain
                     PrintWriter pw = new PrintWriter(fos);
                     pw.println("#/bin/bash");
                     String lsCommand = "log-spout";
-                    cmd.getArgList().stream().map((arg) -> {
+                    lsCommand += cmd.getArgList().stream().map((arg) -> {
                         if (!"g".equals(arg))
                         {
                             if (options.getOption(arg).hasArg())
