@@ -171,7 +171,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
                         RemoteLogConnection.this.config.put("_termAuth", jo.optString("termAuth"));
                         RemoteLogConnection.this.logs = jo.getJSONArray("logs");
                         JSONObject logSelection = new JSONObject();
-                        logSelection.put("log", RemoteLogConnection.this.logs.getString(0));
+                        logSelection.put("log", RemoteLogConnection.this.config.optString("_select", RemoteLogConnection.this.logs.getString(0)));
                         transmit(logSelection);
                         JSONObject filterSelection = new JSONObject();
                         filterSelection.put("filter", RemoteLogConnection.this.config.optString("_filter", ""));

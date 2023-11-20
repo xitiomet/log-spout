@@ -12,13 +12,15 @@ import java.io.InputStreamReader;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openstatic.LogSpoutMain;
 
 public class LogConnectionParser
 {
 
     public static LogConnectionContainer parseInitial(JSONObject json)
     {
-        System.err.println("Parsing: " + json.toString());
+        if (LogSpoutMain.verbose)
+            System.err.println("Parsing: " + json.toString());
         if (json.has("_remote"))
         {
             LogConnectionContainer lcc = new LogConnectionContainer(json);

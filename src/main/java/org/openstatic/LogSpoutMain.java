@@ -116,6 +116,7 @@ public class LogSpoutMain
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
         options.addOption(new Option("p", "password", true, "Set password to send to remote connection"));
+        options.addOption(new Option("l", "log", true, "Select which log to view"));
         options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
         Option apiOption = new Option("a", "api", true, "Turn on api server, optional argument to specify port (default 8662)");
         apiOption.setOptionalArg(true);
@@ -169,6 +170,11 @@ public class LogSpoutMain
                 LogSpoutMain.settings.put("_remote", cmd.getOptionValue("c"));
             }
 
+            if (cmd.hasOption("l"))
+            {
+                LogSpoutMain.settings.put("_select", cmd.getOptionValue("l"));
+            }
+
             if (cmd.hasOption("p"))
             {
                 LogSpoutMain.settings.put("_remote_password", cmd.getOptionValue("p"));
@@ -193,7 +199,16 @@ public class LogSpoutMain
 
                 @Override
                 public void onLine(String line, ArrayList<String> logPath, LogConnection connection) {
-                    System.err.println(line);
+                    if (LogSpoutMain.settings.has("_select"))
+                    {
+                        String select = LogSpoutMain.settings.getString("_select");
+                        if (logPath.contains(select))
+                        {
+                            System.err.println(line);
+                        }
+                    } else {
+                        System.err.println(line);
+                    }
                 }
 
                 @Override
