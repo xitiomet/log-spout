@@ -37,6 +37,10 @@ public class LogConnectionParser
                 {
                     source.put("_filter", json.get("_filter"));
                 }
+                if (json.has("_select"))
+                {
+                    source.put("_select", json.get("_select"));
+                }
                 lcc.addLogConnection(parse(mergeCleanVariables(source, json)));
             }
             lcc.start();
@@ -67,6 +71,10 @@ public class LogConnectionParser
                 if (json.has("_filter"))
                 {
                     source.put("_filter", json.get("_filter"));
+                }
+                if (json.has("_select"))
+                {
+                    source.put("_select", json.get("_select"));
                 }
                 lcc.addLogConnection(parse(mergeCleanVariables(source, json)));
             }

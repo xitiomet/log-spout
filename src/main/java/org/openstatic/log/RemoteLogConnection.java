@@ -2,6 +2,7 @@ package org.openstatic.log;
 
 import java.io.IOException;
 import java.net.URI;
+import java.rmi.Remote;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -10,7 +11,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.eclipse.jetty.util.ajax.JSON;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -124,7 +124,16 @@ public class RemoteLogConnection implements LogConnection, Runnable
     @Override
     public Collection<String> getContainedNames() 
     {
-        return this.logs;
+        return this.logs.stream().filter((entry) -> { 
+            String select = RemoteLogConnection.this.config.optString("_select");
+            if (select == null)
+            {
+                return true;
+            } else if (select.equals(entry)) {
+                return true;
+            }
+            return false;
+        }).collect(Collectors.toList());
     }
     
     @Override
