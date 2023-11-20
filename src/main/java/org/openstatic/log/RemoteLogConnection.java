@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import org.eclipse.jetty.util.ajax.JSON;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -160,6 +161,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
                 if (jo.has("action"))
                 {
                     String action = jo.optString("action");
+                    JSONArray path = jo.optJSONArray("path");
                     if (action.equals("line"))
                     {
 
@@ -167,7 +169,8 @@ public class RemoteLogConnection implements LogConnection, Runnable
                         ((ArrayList<LogConnectionListener>) RemoteLogConnection.this.listeners.clone()).forEach((listener) -> {
                             ArrayList<String> logPath = new ArrayList<String>();
                             logPath.add(RemoteLogConnection.this.getName());
-                            logPath.add(jo.optString("connection"));
+                            for(int i = 0; i < path.length(); i++)
+                                logPath.add(path.getString(i));
                             listener.onLine(fLine, logPath, RemoteLogConnection.this);
                         });
                     } else if (action.equals("authOk")) {
