@@ -202,7 +202,6 @@ public class LogSpoutMain
                 }
                 
             });
-            lcc.connect();
         }
         if (lcc != null && (settings.has("apiPort") || settings.has("apiPassword")))
         {
