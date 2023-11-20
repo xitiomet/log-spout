@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
@@ -106,7 +107,6 @@ public class LogSpoutMain
         System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
         //System.setProperty("org.eclipse.jetty.server.Request.maxFormContentSize","1000000000");
         
-        CommandLine cmd = null;
         Options options = new Options();
         CommandLineParser parser = new DefaultParser();
         LogSpoutMain.settings = new JSONObject();
@@ -115,6 +115,7 @@ public class LogSpoutMain
         options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
+        options.addOption(new Option("g", "generate", true, "Generate a shell script to launch this log"));
         options.addOption(new Option("p", "password", true, "Set password to send to remote connection"));
         options.addOption(new Option("l", "log", true, "Select which log to view"));
         options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
@@ -125,7 +126,7 @@ public class LogSpoutMain
         boolean stdoutLogs = false;
         try
         {
-            cmd = parser.parse(options, args);
+            final CommandLine cmd = parser.parse(options, args);
 
             if (cmd.hasOption("?"))
             {
@@ -183,6 +184,36 @@ public class LogSpoutMain
             if (cmd.hasOption("a"))
             {
                 LogSpoutMain.settings.put("apiPort", Integer.valueOf(cmd.getOptionValue("a", "8662")));
+            }
+
+            if (cmd.hasOption("g"))
+            {
+                try
+                {
+                    File filename = new File(cmd.getOptionValue("g"));
+                    FileOutputStream fos = new FileOutputStream(filename);
+                    PrintWriter pw = new PrintWriter(fos);
+                    pw.println("#/bin/bash");
+                    String lsCommand = "log-spout";
+                    cmd.getArgList().stream().map((arg) -> {
+                        if (!"g".equals(arg))
+                        {
+                            if (options.getOption(arg).hasArg())
+                                return " -" + arg + " " + cmd.getOptionValue(arg);
+                            else
+                                return " -" + arg;
+                        } else {
+                            return "";
+                        }
+                    }).collect(Collectors.joining(" "));
+                    pw.println(lsCommand);
+                    fos.close();
+                    shellExec(new String[] {"chmod","+x",filename.toString()});
+                    System.exit(0);
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
+                }
+
             }
 
             if (!LogSpoutMain.settings.has("hostname"))
