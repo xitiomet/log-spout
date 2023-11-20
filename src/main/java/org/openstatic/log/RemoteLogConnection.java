@@ -3,9 +3,12 @@ package org.openstatic.log;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.eclipse.jetty.util.ajax.JSON;
 import org.eclipse.jetty.websocket.api.Session;
@@ -32,7 +35,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
     private Thread keepAliveThread;
     private String wsUrl;
     private boolean connected;
-    private JSONArray logs;
+    private List<String> logs;
 
     public RemoteLogConnection(JSONObject config)
     {
@@ -40,6 +43,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
         this.listeners = new ArrayList<LogConnectionListener>();
         this.wsUrl = config.optString("_remote", "ws://127.0.0.1:8662") + "/logspout/";
         this.connected = false;
+        this.logs = new ArrayList<String>();
         //System.err.println("Remote Connection: " + this.wsUrl);
     }
 
@@ -116,6 +120,12 @@ public class RemoteLogConnection implements LogConnection, Runnable
     {
         return LogConnectionParser.replaceVariables(this.config.optString("_name", ""), config);
     }
+
+    @Override
+    public Collection<String> getContainedNames() 
+    {
+        return this.logs;
+    }
     
     @Override
     public String getType()
@@ -175,9 +185,9 @@ public class RemoteLogConnection implements LogConnection, Runnable
                         });
                     } else if (action.equals("authOk")) {
                         RemoteLogConnection.this.config.put("_termAuth", jo.optString("termAuth"));
-                        RemoteLogConnection.this.logs = jo.getJSONArray("logs");
+                        RemoteLogConnection.this.logs = jo.getJSONArray("logs").toList().stream().map((obj) -> obj.toString()).collect(Collectors.toList());
                         JSONObject logSelection = new JSONObject();
-                        logSelection.put("log", RemoteLogConnection.this.config.optString("_select", RemoteLogConnection.this.logs.getString(0)));
+                        logSelection.put("log", RemoteLogConnection.this.config.optString("_select", RemoteLogConnection.this.logs.get(0)));
                         transmit(logSelection);
                         JSONObject filterSelection = new JSONObject();
                         filterSelection.put("filter", RemoteLogConnection.this.config.optString("_filter", ""));

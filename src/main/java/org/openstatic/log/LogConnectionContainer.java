@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -160,6 +162,14 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         return this.config.optString("_name", "Untitled Container");
 
+    }
+
+    @Override
+    public Collection<String> getContainedNames()
+    {
+        return this.connections.stream().map((con) -> { 
+            return con.getName();
+        }).collect(Collectors.toList());
     }
 
     @Override

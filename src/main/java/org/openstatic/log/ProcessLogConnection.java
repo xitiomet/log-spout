@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -201,5 +202,11 @@ public class ProcessLogConnection implements LogConnection, Runnable
     @Override
     public void start() {
        
+    }
+
+    @Override
+    public Collection<String> getContainedNames() 
+    {
+        return new ArrayList<String>();
     }
 }

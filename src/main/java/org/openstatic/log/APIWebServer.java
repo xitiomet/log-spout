@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -115,12 +116,15 @@ public class APIWebServer implements Runnable, LogConnectionListener
         }
     }
 
-    public static ArrayList<String> getLogNames(LogConnection lc)
+    public static HashSet<String> getLogNames(LogConnection lc)
     {
-        final ArrayList<String> rl = new ArrayList<String>();
+        final HashSet<String> rl = new HashSet<String>();
         String lName = lc.getName();
         if (!"".equals(lName))
+        {
             rl.add(lName);
+        }
+        rl.addAll(lc.getContainedNames());
         if (lc instanceof LogConnectionContainer)
         {
             LogConnectionContainer lcc = (LogConnectionContainer) lc;
