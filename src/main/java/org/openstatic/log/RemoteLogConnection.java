@@ -126,7 +126,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
     public Collection<String> getContainedNames() 
     {
         return this.logs.stream().filter((entry) -> { 
-            String select = RemoteLogConnection.this.config.optString("_select");
+            String select = RemoteLogConnection.this.config.optString("_select", null);
             if (select == null)
             {
                 return true;
