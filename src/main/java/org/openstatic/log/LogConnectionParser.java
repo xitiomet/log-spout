@@ -20,7 +20,7 @@ public class LogConnectionParser
     public static LogConnectionContainer parseInitial(JSONObject json)
     {
         if (LogSpoutMain.verbose)
-            System.err.println("Parsing: " + json.toString());
+            System.err.println("Parsing: \n" + json.toString(2));
         if (json.has("_remote"))
         {
             LogConnectionContainer lcc = new LogConnectionContainer(json);
