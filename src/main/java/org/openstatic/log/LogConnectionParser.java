@@ -18,8 +18,14 @@ public class LogConnectionParser
 
     public static LogConnectionContainer parseInitial(JSONObject json)
     {
-        if (json.has("_sources")) 
+        System.err.println("Parsing: " + json.toString());
+        if (json.has("_remote"))
         {
+            LogConnectionContainer lcc = new LogConnectionContainer(json);
+            lcc.addLogConnection(new RemoteLogConnection(json));
+            lcc.start();
+            return lcc;
+        } else if (json.has("_sources")) {
             JSONArray sources = json.getJSONArray("_sources");
             LogConnectionContainer lcc = new LogConnectionContainer(json);
             for(int i = 0; i < sources.length(); i++)
@@ -47,6 +53,8 @@ public class LogConnectionParser
                 return new ForEachLineContainer(json);
             } else if (type.equals("process")) {
                 return new ProcessLogConnection(json);
+            } else if (type.equals("remote")) {
+                return new RemoteLogConnection(json);
             }
         } else if (json.has("_sources")) {
             JSONArray sources = json.getJSONArray("_sources");

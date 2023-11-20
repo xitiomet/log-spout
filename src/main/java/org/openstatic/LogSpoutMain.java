@@ -114,6 +114,8 @@ public class LogSpoutMain
         options.addOption(new Option("f", "config", true, "Specify config file"));
         options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
+        options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
+        options.addOption(new Option("p", "password", true, "Set password to send to remote connection"));
         options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
         Option apiOption = new Option("a", "api", true, "Turn on api server, optional argument to specify port (default 8662)");
         apiOption.setOptionalArg(true);
@@ -147,20 +149,29 @@ public class LogSpoutMain
                     System.err.println("Cannot load file: " + filename);
                     System.exit(0);
                 }
-            } else {
+            } else if (!cmd.hasOption("c")) {
                 File file = new File("./.log-spout.json");
                 if (file.exists())
                 {
                     LogSpoutMain.settings = loadJSONObject(file);
                 } else {
                     showHelp(options);
-                    System.exit(0);
                 }
             }
 
             if (cmd.hasOption("e"))
             {
-                LogSpoutMain.settings.put("_filter", cmd.getOptionValue("c"));
+                LogSpoutMain.settings.put("_filter", cmd.getOptionValue("e"));
+            }
+
+            if (cmd.hasOption("c"))
+            {
+                LogSpoutMain.settings.put("_remote", cmd.getOptionValue("c"));
+            }
+
+            if (cmd.hasOption("p"))
+            {
+                LogSpoutMain.settings.put("_remote_password", cmd.getOptionValue("p"));
             }
 
             if (cmd.hasOption("a"))
@@ -191,6 +202,7 @@ public class LogSpoutMain
                 }
                 
             });
+            lcc.connect();
         }
         if (lcc != null && (settings.has("apiPort") || settings.has("apiPassword")))
         {
@@ -202,8 +214,13 @@ public class LogSpoutMain
                 }
             });
             showIPS();
-        } else {
-            showHelp(options);
+        }
+        while(lcc != null)
+        {
+            try
+            {
+                Thread.sleep(1000);
+            } catch (Exception e) {}
         }
     }
 
@@ -219,13 +236,10 @@ public class LogSpoutMain
                 // Create a JmDNS instance
                 Enumeration<InetAddress> addresses = netint.getInetAddresses();
                 Collections.list(addresses).forEach((address) -> {
-                    if (address.isSiteLocalAddress())
+                    try
                     {
-                        try
-                        {
-                            System.err.println("  http://" + address.toString() + ":" + String.valueOf(LogSpoutMain.settings.optInt("apiPort", 8662)) + "/");
-                        } catch (Exception e) {}
-                    }
+                        System.err.println("  http://" + address.toString() + ":" + String.valueOf(LogSpoutMain.settings.optInt("apiPort", 8662)) + "/");
+                    } catch (Exception e) {}
                 });
             }
         } catch (Exception e) {

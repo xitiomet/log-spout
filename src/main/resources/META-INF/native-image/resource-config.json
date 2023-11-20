@@ -11,13 +11,13 @@
       "pattern":"\\Qlogspout/about.png\\E"
     }, 
     {
+      "pattern":"\\Qlogspout/eraser-32.png\\E"
+    }, 
+    {
       "pattern":"\\Qlogspout/icon-128.png\\E"
     }, 
     {
       "pattern":"\\Qlogspout/icon-32.png\\E"
-    }, 
-    {
-      "pattern":"\\Qlogspout/eraser-32.png\\E"
     }, 
     {
       "pattern":"\\Qlogspout/icon-64.png\\E"
@@ -71,17 +71,11 @@
   "bundles":[
     {
       "name":"javax.servlet.LocalStrings",
-      "locales":[
-        "", 
-        "und"
-      ]
+      "locales":["und"]
     }, 
     {
       "name":"javax.servlet.http.LocalStrings",
-      "locales":[
-        "", 
-        "und"
-      ]
+      "locales":["und"]
     }
   ]
 }
