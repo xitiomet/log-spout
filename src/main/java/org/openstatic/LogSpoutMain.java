@@ -210,6 +210,7 @@ public class LogSpoutMain
                     pw.flush();
                     fos.close();
                     shellExec(new String[] {"chmod","+x",filename.toString()});
+                    System.err.println("Generated: " + filename.toString());
                     System.exit(0);
                 } catch (Exception e) {
                     e.printStackTrace(System.err);
