@@ -18,6 +18,7 @@ import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.eclipse.jetty.websocket.common.WebSocketSession;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openstatic.LogSpoutMain;
 import org.openstatic.log.APIWebServer.EventsWebSocket;
 
 public class RemoteLogConnection implements LogConnection, Runnable
@@ -82,7 +83,8 @@ public class RemoteLogConnection implements LogConnection, Runnable
             try
             {
                 String textData = data.toString();
-                //System.err.println("Transmit: " + textData);
+                if (LogSpoutMain.verbose)
+                    System.err.println("Transmit: " + textData);
                 this.session.getRemote().sendStringByFuture(textData);
             } catch (Exception e) {
                 e.printStackTrace(System.err);
@@ -152,7 +154,8 @@ public class RemoteLogConnection implements LogConnection, Runnable
         @OnWebSocketMessage
         public void onText(Session session, String message) throws IOException {
             try {
-                //System.err.println("Rx: " + message);
+                if (LogSpoutMain.verbose)
+                    System.err.println("Rx: " + message);
                 final JSONObject jo = new JSONObject(message);
                 if (jo.has("action"))
                 {
