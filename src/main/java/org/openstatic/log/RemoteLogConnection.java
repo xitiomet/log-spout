@@ -101,6 +101,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
     public void disconnect() 
     {
         this.connected = false;
+        this.close();
     }
 
     @Override
@@ -185,11 +186,11 @@ public class RemoteLogConnection implements LogConnection, Runnable
                     {
 
                         final String fLine =  jo.optString("line");
+                        final ArrayList<String> logPath = new ArrayList<String>();
+                        logPath.add(RemoteLogConnection.this.getName());
+                        for(int i = 0; i < path.length(); i++)
+                            logPath.add(path.getString(i));
                         ((ArrayList<LogConnectionListener>) RemoteLogConnection.this.listeners.clone()).forEach((listener) -> {
-                            ArrayList<String> logPath = new ArrayList<String>();
-                            logPath.add(RemoteLogConnection.this.getName());
-                            for(int i = 0; i < path.length(); i++)
-                                logPath.add(path.getString(i));
                             listener.onLine(fLine, logPath, RemoteLogConnection.this);
                         });
                     } else if (action.equals("authOk")) {
