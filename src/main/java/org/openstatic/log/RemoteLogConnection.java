@@ -2,13 +2,9 @@ package org.openstatic.log;
 
 import java.io.IOException;
 import java.net.URI;
-import java.rmi.Remote;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.eclipse.jetty.websocket.api.Session;
@@ -22,8 +18,6 @@ import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.eclipse.jetty.websocket.common.WebSocketSession;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.openstatic.LogSpoutMain;
-import org.openstatic.log.APIWebServer.EventsWebSocket;
 
 public class RemoteLogConnection implements LogConnection, Runnable
 {

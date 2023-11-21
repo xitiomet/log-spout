@@ -300,7 +300,7 @@ function cleanPayload(payload)
 }
 
 window.onload = function() {
-    term = new Terminal({cursorBlink: false, allowProposedApi: true, scrollback: 200, fontSize: 10});
+    term = new Terminal({cursorBlink: false, allowProposedApi: true, scrollback: 200, fontSize: 12});
     term.open(document.getElementById('terminal')); 
     term.loadAddon(fitAddon);
     setupWebsocket();
