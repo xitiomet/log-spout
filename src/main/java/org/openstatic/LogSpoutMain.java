@@ -254,10 +254,10 @@ public class LogSpoutMain
                         String select = LogSpoutMain.settings.getString("_select");
                         if (logPath.contains(select))
                         {
-                            System.err.println(line);
+                            System.out.println(line);
                         }
                     } else {
-                        System.err.println(line);
+                        System.out.println(line);
                     }
                 }
 
