@@ -117,7 +117,7 @@ public class LogSpoutMain
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
         options.addOption(new Option("g", "generate", true, "Generate a shell script to launch this log"));
-        options.addOption(new Option("p", "password", true, "Set password to send to remote connection"));
+        options.addOption(new Option("p", "password", true, "Set password to send to remote connection -c, or for local api -a"));
         options.addOption(new Option("l", "log", true, "Select which log to view"));
         options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
         Option apiOption = new Option("a", "api", true, "Turn on api server, optional argument to specify port (default 8662)");
@@ -179,7 +179,14 @@ public class LogSpoutMain
 
             if (cmd.hasOption("p"))
             {
-                LogSpoutMain.settings.put("_remote_password", cmd.getOptionValue("p"));
+                if (cmd.hasOption("a") && !settings.has("apiPassword"))
+                {
+                    LogSpoutMain.settings.put("apiPassword", cmd.getOptionValue("p"));
+                }
+                if (cmd.hasOption("c"))
+                {
+                    LogSpoutMain.settings.put("_remote_password", cmd.getOptionValue("p"));
+                }
             }
 
             if (cmd.hasOption("a"))
@@ -197,15 +204,24 @@ public class LogSpoutMain
                     pw.println("#!/bin/bash");
                     String lsCommand = "log-spout";
                     ArrayList<String> argsCollection = new ArrayList<String>(Arrays.asList(args));
+                    boolean hasStdOutOrApi = false;
                     for(Iterator<String> iterator = argsCollection.iterator(); iterator.hasNext(); )
                     {
                         String nextArg = iterator.next();
+                        if ("-s".equals(nextArg) || "-a".equals(nextArg) || "--stdout".equals(nextArg) || "--api".equals(nextArg))
+                        {
+                            hasStdOutOrApi = true;
+                        }
                         if (!"-g".equals(nextArg) && !"--generate".equals(nextArg))
                         {
                             lsCommand += " " + nextArg;
                         } else if (iterator.hasNext()) {
                             iterator.next();
                         }
+                    }
+                    if (!hasStdOutOrApi)
+                    {
+                        lsCommand += " -s";
                     }
                     pw.println(lsCommand);
                     pw.flush();
