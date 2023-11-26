@@ -194,7 +194,7 @@ public class LogSpoutMain
                     File filename = new File(cmd.getOptionValue("g"));
                     FileOutputStream fos = new FileOutputStream(filename);
                     PrintWriter pw = new PrintWriter(fos);
-                    pw.println("#/bin/bash");
+                    pw.println("#!/bin/bash");
                     String lsCommand = "log-spout";
                     ArrayList<String> argsCollection = new ArrayList<String>(Arrays.asList(args));
                     for(Iterator<String> iterator = argsCollection.iterator(); iterator.hasNext(); )
