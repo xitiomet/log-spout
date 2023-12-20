@@ -47,14 +47,25 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     {
         if (this.listeners.contains(listener))
             this.listeners.remove(listener);
-        if (this.listeners.size() == 0 && connected && started)
-        {
-            if (LogSpoutMain.verbose)
+        Thread d = new Thread(() -> {
+            try
             {
-                System.err.println ("Disconnecting " + this.getName() + " (no listeners!)");
+                Thread.sleep(10000);
+                if (LogConnectionContainer.this.listeners.size() == 0 && LogConnectionContainer.this.connected && LogConnectionContainer.this.started)
+                {
+                    if (LogSpoutMain.verbose)
+                    {
+                        System.err.println ("Disconnecting " + this.getName() + " (no listeners!)");
+                    }
+                    LogConnectionContainer.this.disconnect();
+                }
+            } catch (Exception e) {
+                if (LogSpoutMain.verbose)
+                    e.printStackTrace(System.err);
             }
-            this.disconnect();
-        }
+        });
+        d.start();
+        
     }
 
     public void addLogConnection(LogConnection connection) 
