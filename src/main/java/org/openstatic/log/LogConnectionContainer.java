@@ -52,7 +52,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
             Thread d = new Thread(() -> {
                 try
                 {
-                    Thread.sleep(10000);
+                    Thread.sleep(30000);
                     if (LogConnectionContainer.this.listeners.size() == 0 && LogConnectionContainer.this.connected && LogConnectionContainer.this.started)
                     {
                         if (LogSpoutMain.verbose)
