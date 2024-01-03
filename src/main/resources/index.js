@@ -12,6 +12,10 @@ var httpUrl = '';
 var termAuth = '';
 var appendEnabled = true;
 
+$.ajaxSetup({
+    timeout:2000 // in milliseconds 
+    });
+
 function getParameterByName(name, url = window.location.href) 
 {
     name = name.replace(/[\[\]]/g, '\\$&');
