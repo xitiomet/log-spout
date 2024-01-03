@@ -159,6 +159,18 @@ function filterIp()
             }
             updateFilter();
             document.getElementById('filterIp').enabled = true;
+        }).catch((err) => {
+            var filterInput = document.getElementById('filterInput');
+            if (filterInput.value == '')
+            {
+                var filterText = ipv4;
+                filterInput.value = filterText;
+            } else {
+                var filterText = '(' + filterInput.value + ') && ' + ipv4;
+                filterInput.value = filterText;
+            }
+            updateFilter();
+            document.getElementById('filterIp').enabled = true;
         });
     });
     

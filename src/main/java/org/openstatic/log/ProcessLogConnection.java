@@ -107,7 +107,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
         try
         {
             this.userDisconnect = true;
-            this.process.destroy();
+            this.process.destroyForcibly().waitFor();
             if (this.inputStream != null)
             {
                 this.inputStream.close();
