@@ -77,13 +77,14 @@ public class ProcessLogConnection implements LogConnection, Runnable
                 if (!process.isAlive())
                 {
                     this.process = this.processBuilder.start();
+                    this.inputStream = this.process.getInputStream();
                 }
             } else {
                 this.process = this.processBuilder.start();
+                this.inputStream = this.process.getInputStream();
             }
             if (LogSpoutMain.verbose)
                 System.err.println("Launched: " + this.commandArray.stream().collect(Collectors.joining(" ")));
-            this.inputStream = this.process.getInputStream();
             if (this.thread == null)
             {
                 this.thread = new Thread(this);
@@ -107,7 +108,8 @@ public class ProcessLogConnection implements LogConnection, Runnable
         try
         {
             this.userDisconnect = true;
-            this.process.destroyForcibly().waitFor();
+            if (this.process != null)
+               this.process.destroyForcibly().waitFor();
             if (this.inputStream != null)
             {
                 this.inputStream.close();

@@ -13,12 +13,14 @@ public class ForEachLineContainer extends LogConnectionContainer
 {
     private JSONObject config;
     private boolean connected;
+    private boolean inRebuild;
 
     public ForEachLineContainer(JSONObject config)
     {
         super(config);
         this.config = config;  
-        this.connected = false;  
+        this.connected = false;
+        this.inRebuild = false;
     }
 
     @Override
@@ -46,6 +48,7 @@ public class ForEachLineContainer extends LogConnectionContainer
                 con.connect();
             });
         }
+        this.inRebuild = false;
     }
 
     @Override
@@ -98,20 +101,23 @@ public class ForEachLineContainer extends LogConnectionContainer
     @Override
     public void onLogDisconnectError(LogConnection connection, String err)
     {
-        (new Thread(() -> {
-            try
-            {
-                Thread.sleep(10000);
-                if (ForEachLineContainer.this.connected)
+        if (!this.inRebuild)
+        {
+            (new Thread(() -> {
+                try
                 {
-                    if (LogSpoutMain.verbose)
-                        System.err.println("Issue inside forEachLineContainer " + this.getName() + ", rebuilding! " + err);
-                    ForEachLineContainer.this.connect();
+                    Thread.sleep(10000);
+                    if (ForEachLineContainer.this.connected)
+                    {
+                        if (LogSpoutMain.verbose)
+                            System.err.println("Issue inside forEachLineContainer " + this.getName() + ", rebuilding! " + err);
+                        ForEachLineContainer.this.connect();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace(System.err);
                 }
-            } catch (Exception e) {
-                e.printStackTrace(System.err);
-            }
-        })).start();
+            })).start();
+        }
     }
 
     @Override
