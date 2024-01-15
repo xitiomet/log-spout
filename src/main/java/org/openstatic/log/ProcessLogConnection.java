@@ -135,10 +135,16 @@ public class ProcessLogConnection implements LogConnection, Runnable
             {
                 String linePrefix = "";
                 String lineSuffix = "";
-                if (this.config.optBoolean("_unescape", true))
-                    line = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\\\u00"));
-                if (this.config.optBoolean("_urldecode", false))
-                    line = URLDecoder.decode(line,Charset.forName("UTF-8"));
+                try
+                {
+                    if (this.config.optBoolean("_unescape", true))
+                        line = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\\\u00"));
+                } catch (Exception e) {}
+                try
+                {
+                    if (this.config.optBoolean("_urldecode", false))
+                        line = URLDecoder.decode(line,Charset.forName("UTF-8"));
+                } catch (Exception e) {}
                 if (this.config.has("_highlight"))
                 {
                     JSONObject rules = this.config.getJSONObject("_highlight");
