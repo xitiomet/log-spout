@@ -91,9 +91,12 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     public void clearAllLogConnections() 
     {
         ((ArrayList<LogConnection>) this.connections.clone()).forEach((c) -> {
-            c.removeLogConnectionListener(LogConnectionContainer.this);
-            if (c.isConnected())
-                c.disconnect();
+            try
+            {
+                c.removeLogConnectionListener(LogConnectionContainer.this);
+                if (c.isConnected())
+                    c.disconnect();
+            } catch (Exception e) {}
         });
         this.connections.clear();
     }

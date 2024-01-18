@@ -103,6 +103,7 @@ public class ForEachLineContainer extends LogConnectionContainer
     {
         if (!this.inRebuild)
         {
+            this.inRebuild = true;
             (new Thread(() -> {
                 try
                 {
