@@ -194,10 +194,10 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     }
 
     @Override
-    public void onLogDisconnectError(LogConnection connection, String err) 
+    public void onLogDisconnectError(LogConnection connection, String err, Exception exception) 
     {
         ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((l) -> {
-            l.onLogDisconnectError(connection, err);
+            l.onLogDisconnectError(connection, err, exception);
         });
     }
 

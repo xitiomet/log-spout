@@ -178,7 +178,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
                 errMsg = this.exception.toString() + " - " + this.exception.getMessage();
             final String fErrMsg = errMsg;
             ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
-                listener.onLogDisconnectError(this, fErrMsg);
+                listener.onLogDisconnectError(this, fErrMsg, this.exception);
             });
         }
         //System.err.println("PROC END");

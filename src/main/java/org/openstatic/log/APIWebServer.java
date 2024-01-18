@@ -517,7 +517,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
     }
 
     @Override
-    public void onLogDisconnectError(LogConnection connection, String err) {
+    public void onLogDisconnectError(LogConnection connection, String err, Exception exception) {
         
     }
 }
