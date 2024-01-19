@@ -164,7 +164,10 @@ public class ProcessLogConnection implements LogConnection, Runnable
                 ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
                     ArrayList<String> logPath = new ArrayList<String>();
                     logPath.add(this.getName());
-                    listener.onLine(fLine, logPath, ProcessLogConnection.this);
+                    try
+                    {
+                        listener.onLine(fLine, logPath, ProcessLogConnection.this);
+                    } catch (Exception ex2) {}
                 });
             }
             errMsg = "EOS";

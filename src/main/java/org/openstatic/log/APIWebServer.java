@@ -471,7 +471,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
         jo.put("connection", connection.getName());
         jo.put("path", new JSONArray(logPath));
         String message = jo.toString();
-        for (Session s : this.wsSessions)
+        for (Session s : ((ArrayList<Session>) this.wsSessions.clone()))
         {
             try
             {
