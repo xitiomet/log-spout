@@ -14,6 +14,7 @@ public class ForEachLineContainer extends LogConnectionContainer
     private JSONObject config;
     private boolean connected;
     private boolean inRebuild;
+    private long createdAt;
 
     public ForEachLineContainer(JSONObject config)
     {
@@ -21,6 +22,7 @@ public class ForEachLineContainer extends LogConnectionContainer
         this.config = config;  
         this.connected = false;
         this.inRebuild = false;
+        this.createdAt = System.currentTimeMillis();
     }
 
     @Override
@@ -101,6 +103,10 @@ public class ForEachLineContainer extends LogConnectionContainer
     @Override
     public void onLogDisconnectError(LogConnection connection, String err, Exception exception)
     {
+        if ( "EOS".equals(err) && connection.getAgeMillis() < 10000)
+        {
+            return;
+        }
         if (!this.inRebuild)
         {
             this.inRebuild = true;
@@ -129,5 +135,10 @@ public class ForEachLineContainer extends LogConnectionContainer
     public boolean isConnected()
     {
         return this.connected;
+    }
+
+    @Override
+    public long getAgeMillis() {
+        return System.currentTimeMillis() - this.createdAt;
     }
 }

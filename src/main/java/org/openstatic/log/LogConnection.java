@@ -13,4 +13,5 @@ public interface LogConnection
     public Collection<String> getContainedNames();
     public String getType();
     public boolean isConnected();
+    public long getAgeMillis();
 }

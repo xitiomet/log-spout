@@ -30,9 +30,11 @@ public class RemoteLogConnection implements LogConnection, Runnable
     private String wsUrl;
     private boolean connected;
     private List<String> logs;
+    private long createdAt;
 
     public RemoteLogConnection(JSONObject config)
     {
+        this.createdAt = System.currentTimeMillis();
         this.config = config;
         this.listeners = new ArrayList<LogConnectionListener>();
         this.wsUrl = config.optString("_remote", "ws://127.0.0.1:8662") + "/logspout/";
@@ -286,5 +288,10 @@ public class RemoteLogConnection implements LogConnection, Runnable
                 // e.printStackTrace();
             }
         }
+    }
+
+    @Override
+    public long getAgeMillis() {
+        return System.currentTimeMillis() - this.createdAt;
     }
 }

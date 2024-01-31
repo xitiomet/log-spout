@@ -28,9 +28,11 @@ public class ProcessLogConnection implements LogConnection, Runnable
     private boolean userDisconnect;
     private ArrayList<String> commandArray;
     private Exception exception;
+    private long createdAt;
 
     public ProcessLogConnection(JSONObject config)
     {
+        this.createdAt = System.currentTimeMillis();
         this.userDisconnect = false;
         //System.err.println("Process: " + config.toString());
         JSONArray command = config.optJSONArray("_execute");
@@ -219,5 +221,10 @@ public class ProcessLogConnection implements LogConnection, Runnable
     public Collection<String> getContainedNames() 
     {
         return new ArrayList<String>();
+    }
+
+    @Override
+    public long getAgeMillis() {
+        return System.currentTimeMillis() - this.createdAt;
     }
 }

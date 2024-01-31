@@ -15,6 +15,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     private ArrayList<LogConnectionListener> listeners;
     private ArrayList<LogConnection> connections;
     private JSONObject config;
+    private long createdAt;
     private boolean connected;
     private boolean started; // This flag means its ok to start and stop downstream connections based on listeners
 
@@ -25,6 +26,7 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
         this.connections = new ArrayList<LogConnection>();
         this.connected = false;
         this.started = false;
+        this.createdAt = System.currentTimeMillis();
     }
 
     @Override
@@ -204,6 +206,11 @@ public class LogConnectionContainer implements LogConnection, LogConnectionListe
     @Override
     public boolean isConnected() {
         return this.connected;
+    }
+
+    @Override
+    public long getAgeMillis() {
+        return System.currentTimeMillis() - this.createdAt;
     }
     
 }
