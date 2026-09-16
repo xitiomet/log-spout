@@ -1,0 +1,11 @@
+{
+    "_name": "Local System",
+    "apiPassword": "logspout",
+    "_sources": [
+        {
+            "_name": "syslog",
+            "_type": "process",
+            "_execute": ["journalctl", "-x", "-f"]
+        }
+    ]
+}
