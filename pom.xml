@@ -225,6 +225,17 @@
                                     <filemode>755</filemode>
                                 </mapper>
                             </data>
+                            <data>
+                                <src>${project.basedir}/src/deb/log-spout.json</src>
+                                <type>file</type>
+                                <mapper>
+                                    <type>perm</type>
+                                    <prefix>/etc/log-spout</prefix>
+                                    <user>loader</user>
+                                    <group>loader</group>
+                                    <filemode>755</filemode>
+                                </mapper>
+                            </data>
                         </dataSet>
                     </configuration>
                 </execution>

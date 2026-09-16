@@ -141,6 +141,8 @@ public class ProcessLogConnection implements LogConnection, Runnable
                 {
                     if (this.config.optBoolean("_unescape", true))
                         line = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\\\u00"));
+                    if (this.config.optBoolean("_fixescape", true))
+                        line = line.replaceAll(Pattern.quote("#033["), "\\u001b[");
                 } catch (Exception e) {}
                 try
                 {
