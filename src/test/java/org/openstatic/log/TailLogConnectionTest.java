@@ -41,7 +41,7 @@ public class TailLogConnectionTest
     private JSONObject config()
     {
         return new JSONObject().put("_type", "tail")
-            .put("file", this.file.toString()).put("_name", "$(file)");
+            .put("_file", this.file.toString()).put("_name", "$(_file)");
     }
 
     private void connect(JSONObject config)
@@ -182,7 +182,7 @@ public class TailLogConnectionTest
     public void parsesInheritedFileAndExpandsPathVariables() throws Exception
     {
         JSONObject source = new JSONObject().put("_type", "tail")
-            .put("file", "$(directory)/$(filename)").put("_name", "$(filename)");
+            .put("_file", "$(directory)/$(filename)").put("_name", "$(filename)");
         JSONObject parent = new JSONObject().put("directory", this.file.getParent().toString())
             .put("filename", this.file.getFileName().toString())
             .put("_sources", new JSONArray().put(source));
@@ -221,6 +221,6 @@ public class TailLogConnectionTest
     @Test(expected = IllegalArgumentException.class)
     public void rejectsEmptyFile()
     {
-        LogConnectionParser.parse(new JSONObject().put("_type", "tail").put("file", ""));
+        LogConnectionParser.parse(new JSONObject().put("_type", "tail").put("_file", ""));
     }
 }
