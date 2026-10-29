@@ -135,6 +135,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
         authJsonObject.put("termAuth", termAuth);
         authJsonObject.put("availableHistory", APIWebServer.instance.packetHistory.size());
         authJsonObject.put("logs", getLogNames(APIWebServer.instance.logConnections));
+        authJsonObject.put("presets", LogSpoutMain.getPresets());
         authJsonObject.put("hostname", LogSpoutMain.settings.optString("hostname", "LOGSPOUT"));
         authJsonObject.put("name", APIWebServer.instance.logConnections.getName());
         session.getRemote().sendStringByFuture(authJsonObject.toString());
@@ -192,6 +193,22 @@ public class APIWebServer implements Runnable, LogConnectionListener
                 sessionProperties.put("filter", j.optString("filter", ""));
             } else if (j.has("log")) {
                 sessionProperties.put("log", j.optString("log", ""));
+            } else if (j.has("savePreset")) {
+                JSONObject preset = j.optJSONObject("savePreset");
+                if (preset != null)
+                {
+                    boolean ok = LogSpoutMain.savePreset(preset.optString("name", ""), preset.optString("log", ""), preset.optString("filter", ""));
+                    if (ok)
+                        broadcastPresets();
+                    else
+                        sendPresetError(session, "Unable to save preset.");
+                }
+            } else if (j.has("deletePreset")) {
+                boolean ok = LogSpoutMain.deletePreset(j.optString("deletePreset", ""));
+                if (ok)
+                    broadcastPresets();
+                else
+                    sendPresetError(session, "Unable to delete preset.");
             }
         } else {
             JSONObject errorJsonObject = new JSONObject();
@@ -237,6 +254,22 @@ public class APIWebServer implements Runnable, LogConnectionListener
                 e.printStackTrace(System.err);
             }
         }
+    }
+
+    public void broadcastPresets()
+    {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "presets");
+        jo.put("presets", LogSpoutMain.getPresets());
+        broadcastJSONObject(jo);
+    }
+
+    public static void sendPresetError(WebSocketSession session, String error)
+    {
+        JSONObject jo = new JSONObject();
+        jo.put("action", "presetError");
+        jo.put("error", error);
+        session.getRemote().sendStringByFuture(jo.toString());
     }
 
     public void sendJSONObject(JSONObject jo, long termId) 

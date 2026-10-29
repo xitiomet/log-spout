@@ -31,6 +31,7 @@ import org.apache.commons.jexl3.MapContext;
 public class LogSpoutMain
 {
     public static JSONObject settings;
+    public static File configFile;
     public static JexlEngine jexl;
     public static boolean verbose = false;
     public static APIWebServer apiWebServer;
@@ -148,6 +149,7 @@ public class LogSpoutMain
                 if (file.exists())
                 {
                     LogSpoutMain.settings = loadJSONObject(file);
+                    LogSpoutMain.configFile = file;
                 } else {
                     System.err.println("Cannot load file: " + filename);
                     System.exit(0);
@@ -157,6 +159,7 @@ public class LogSpoutMain
                 if (file.exists())
                 {
                     LogSpoutMain.settings = loadJSONObject(file);
+                    LogSpoutMain.configFile = file;
                 } else {
                     showHelp(options);
                 }
@@ -347,6 +350,73 @@ public class LogSpoutMain
             fos.close();
         } catch (Exception e) {
         }
+    }
+
+    public static JSONArray getPresets()
+    {
+        if (LogSpoutMain.settings != null && LogSpoutMain.settings.has("_presets"))
+        {
+            return LogSpoutMain.settings.optJSONArray("_presets");
+        }
+        return new JSONArray();
+    }
+
+    public static synchronized boolean savePreset(String name, String log, String filter)
+    {
+        if (name == null || "".equals(name.trim()))
+            return false;
+        name = name.trim();
+        if (LogSpoutMain.settings == null)
+            return false;
+        JSONArray presets = LogSpoutMain.settings.optJSONArray("_presets");
+        if (presets == null)
+        {
+            presets = new JSONArray();
+            LogSpoutMain.settings.put("_presets", presets);
+        }
+        JSONObject preset = null;
+        for (int i = 0; i < presets.length(); i++)
+        {
+            JSONObject p = presets.optJSONObject(i);
+            if (p != null && name.equals(p.optString("name", "")))
+            {
+                preset = p;
+                break;
+            }
+        }
+        if (preset == null)
+        {
+            preset = new JSONObject();
+            preset.put("name", name);
+            presets.put(preset);
+        }
+        preset.put("log", log == null ? "" : log);
+        preset.put("filter", filter == null ? "" : filter);
+        if (LogSpoutMain.configFile != null)
+            saveJSONObject(LogSpoutMain.configFile, LogSpoutMain.settings);
+        return true;
+    }
+
+    public static synchronized boolean deletePreset(String name)
+    {
+        if (name == null || LogSpoutMain.settings == null)
+            return false;
+        JSONArray presets = LogSpoutMain.settings.optJSONArray("_presets");
+        if (presets == null)
+            return false;
+        boolean removed = false;
+        for (int i = presets.length() - 1; i >= 0; i--)
+        {
+            JSONObject p = presets.optJSONObject(i);
+            if (p != null && name.equals(p.optString("name", "")))
+            {
+                presets.remove(i);
+                removed = true;
+            }
+        }
+        if (removed && LogSpoutMain.configFile != null)
+            saveJSONObject(LogSpoutMain.configFile, LogSpoutMain.settings);
+        return removed;
     }
 
     public static String shellExec(String cmd[])

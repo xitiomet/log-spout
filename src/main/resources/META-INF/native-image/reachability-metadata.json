@@ -1,0 +1,886 @@
+{
+  "reflection": [
+    {
+      "type": "byte[]"
+    },
+    {
+      "type": "com.sun.crypto.provider.AESCipher$General",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ARCFOURCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ChaCha20Cipher$ChaCha20Poly1305",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DESCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DESedeCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DHParameters",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.GaloisCounterMode$AESGCM",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.HKDFKeyDerivation$HKDFSHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "javax.crypto.KDFParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.HmacCore$HmacSHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.TlsMasterSecretGenerator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Boolean",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "getBoolean",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "valueOf",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Byte",
+      "methods": [
+        {
+          "name": "valueOf",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Class",
+      "methods": [
+        {
+          "name": "getModule",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Double",
+      "methods": [
+        {
+          "name": "valueOf",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Float",
+      "methods": [
+        {
+          "name": "valueOf",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Integer",
+      "methods": [
+        {
+          "name": "valueOf",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Long",
+      "methods": [
+        {
+          "name": "valueOf",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Module",
+      "methods": [
+        {
+          "name": "getLayer",
+          "parameterTypes": []
+        },
+        {
+          "name": "getName",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.ModuleLayer",
+      "methods": [
+        {
+          "name": "configuration",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Object"
+    },
+    {
+      "type": "java.lang.Short",
+      "methods": [
+        {
+          "name": "valueOf",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.String"
+    },
+    {
+      "type": "java.lang.String[]"
+    },
+    {
+      "type": "java.lang.management.ManagementFactory",
+      "methods": [
+        {
+          "name": "getRuntimeMXBean",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.management.RuntimeMXBean",
+      "methods": [
+        {
+          "name": "getUptime",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.module.Configuration",
+      "methods": [
+        {
+          "name": "findModule",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.module.ModuleReference",
+      "methods": [
+        {
+          "name": "location",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.module.ResolvedModule",
+      "methods": [
+        {
+          "name": "reference",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.security.AlgorithmParametersSpi"
+    },
+    {
+      "type": "java.security.KeyStoreSpi"
+    },
+    {
+      "type": "java.security.SecureRandomParameters"
+    },
+    {
+      "type": "java.security.interfaces.RSAPrivateKey"
+    },
+    {
+      "type": "java.security.interfaces.RSAPublicKey"
+    },
+    {
+      "type": "java.util.Date"
+    },
+    {
+      "type": "javax.security.auth.x500.X500Principal",
+      "fields": [
+        {
+          "name": "thisX500Name"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "sun.security.x509.X500Name"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.commons.jexl3.JexlArithmetic",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "boolean",
+            "java.math.MathContext",
+            "int"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.commons.logging.LogFactory"
+    },
+    {
+      "type": "org.apache.commons.logging.impl.Jdk14Logger",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.apache.commons.logging.impl.Log4JLogger"
+    },
+    {
+      "type": "org.apache.commons.logging.impl.Log4jApiLogFactory"
+    },
+    {
+      "type": "org.apache.commons.logging.impl.LogFactoryImpl",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.commons.logging.impl.Slf4jLogFactory"
+    },
+    {
+      "type": "org.apache.commons.logging.impl.WeakHashtable",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.apache.logging.slf4j.SLF4JProvider"
+    },
+    {
+      "type": "org.eclipse.jetty.http.Http1FieldPreEncoder"
+    },
+    {
+      "type": "org.eclipse.jetty.servlet.ServletMapping[]"
+    },
+    {
+      "type": "org.eclipse.jetty.util.ModuleLocation",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.jetty.util.log.Slf4jLog"
+    },
+    {
+      "type": "org.eclipse.jetty.websocket.common.extensions.compress.DeflateFrameExtension"
+    },
+    {
+      "type": "org.eclipse.jetty.websocket.common.extensions.compress.PerMessageDeflateExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.jetty.websocket.common.extensions.compress.XWebkitDeflateFrameExtension"
+    },
+    {
+      "type": "org.eclipse.jetty.websocket.common.extensions.fragment.FragmentExtension"
+    },
+    {
+      "type": "org.eclipse.jetty.websocket.common.extensions.identity.IdentityExtension"
+    },
+    {
+      "type": "org.eclipse.jetty.websocket.server.WebSocketServerFactory",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "javax.servlet.ServletContext",
+            "org.eclipse.jetty.websocket.api.WebSocketPolicy"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.openstatic.log.APIWebServer$EventsWebSocket",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "onClose",
+          "parameterTypes": [
+            "org.eclipse.jetty.websocket.api.Session",
+            "int",
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "onConnect",
+          "parameterTypes": [
+            "org.eclipse.jetty.websocket.api.Session"
+          ]
+        },
+        {
+          "name": "onError",
+          "parameterTypes": [
+            "org.eclipse.jetty.websocket.api.Session",
+            "java.lang.Throwable"
+          ]
+        },
+        {
+          "name": "onText",
+          "parameterTypes": [
+            "org.eclipse.jetty.websocket.api.Session",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.openstatic.log.APIWebServer$EventsWebSocketServlet",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.openstatic.log.InterfaceServlet",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "org.openstatic.log.RemoteLogConnection$EventsWebSocket",
+      "methods": [
+        {
+          "name": "onClose",
+          "parameterTypes": [
+            "org.eclipse.jetty.websocket.api.Session",
+            "int",
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "onConnect",
+          "parameterTypes": [
+            "org.eclipse.jetty.websocket.api.Session"
+          ]
+        },
+        {
+          "name": "onError",
+          "parameterTypes": [
+            "java.lang.Throwable"
+          ]
+        },
+        {
+          "name": "onText",
+          "parameterTypes": [
+            "org.eclipse.jetty.websocket.api.Session",
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.management.VMManagementImpl",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "compTimeMonitoringSupport"
+        },
+        {
+          "name": "currentThreadCpuTimeSupport"
+        },
+        {
+          "name": "objectMonitorUsageSupport"
+        },
+        {
+          "name": "otherThreadCpuTimeSupport"
+        },
+        {
+          "name": "remoteDiagnosticCommandsSupport"
+        },
+        {
+          "name": "synchronizerUsageSupport"
+        },
+        {
+          "name": "threadAllocatedMemorySupport"
+        },
+        {
+          "name": "threadContentionMonitoringSupport"
+        }
+      ]
+    },
+    {
+      "type": "sun.security.pkcs.SignerInfo[]"
+    },
+    {
+      "type": "sun.security.pkcs12.PKCS12KeyStore",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.pkcs12.PKCS12KeyStore$DualFormatPKCS12",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.DSA$SHA224withDSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.DSA$SHA256withDSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.JavaKeyStore$DualFormatJKS",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.JavaKeyStore$JKS",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.NativePRNG",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.security.SecureRandomParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA2$SHA224",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA2$SHA256",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA5$SHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA5$SHA512",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.X509Factory",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.certpath.PKIXCertPathValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.PSSParameters",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSAKeyFactory$Legacy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSAPSSSignature",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSASignature$SHA224withRSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSASignature$SHA256withRSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.SSLContextImpl$TLSContext",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.TrustManagerFactoryImpl$PKIXFactory",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.util.ObjectIdentifier"
+    },
+    {
+      "type": "sun.security.x509.AuthorityInfoAccessExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.AuthorityKeyIdentifierExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.BasicConstraintsExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.CRLDistributionPointsExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.CertificateExtensions"
+    },
+    {
+      "type": "sun.security.x509.CertificatePoliciesExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.ExtendedKeyUsageExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.IssuerAlternativeNameExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.KeyUsageExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.NetscapeCertTypeExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.PrivateKeyUsageExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.SubjectAlternativeNameExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.SubjectKeyIdentifierExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData"
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData_en"
+    },
+    {
+      "type": "sun.util.resources.cldr.CalendarData"
+    }
+  ]
+}

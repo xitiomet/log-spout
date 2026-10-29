@@ -201,10 +201,17 @@
                 </tr>
                 <tr>
                   <td colspan="3">
-                    <select style="border: 1px white dotted; height: 32px; width: 20%; background-color: #442222; color: lightcoral; display: none;"" onchange="updateLog()" id="logs" name="logs">
-                      <option value="">- Select Log -</option>
-                    </select>
-                    <input type="text" id="filterInput" style="border: 1px white dotted; width: 79%; height: 32px; background-color: #442222; color: orange; display: none;" onchange="updateFilter()" placeholder="Filter Logs using an unbroken piece of text in the logs. Example: (GET || PUT) && HTTP" />
+                    <div style="display: flex; align-items: center; gap: 4px; width: 100%;">
+                      <select style="border: 1px white dotted; height: 32px; flex: 0 0 18%; background-color: #442222; color: lightcoral; display: none;" onchange="updateLog()" id="logs" name="logs">
+                        <option value="">- Select Log -</option>
+                      </select>
+                      <select style="border: 1px white dotted; height: 32px; flex: 0 0 15%; background-color: #442222; color: lightcoral; display: none;" onchange="loadPreset()" id="presets" name="presets" title="Presets">
+                        <option value="">(New Preset)</option>
+                      </select>
+                      <button type="button" id="savePresetBtn" title="Save Preset" onclick="savePreset()" style="border: 1px white dotted; height: 32px; background-color: #442222; color: orange; cursor: pointer; display: none;">Save</button>
+                      <button type="button" id="deletePresetBtn" title="Delete Preset" onclick="deletePreset()" style="border: 1px white dotted; height: 32px; background-color: #442222; color: orange; cursor: pointer; display: none;">Delete</button>
+                      <input type="text" id="filterInput" style="border: 1px white dotted; flex: 1 1 auto; height: 32px; background-color: #442222; color: orange; display: none;" onchange="updateFilter()" placeholder="Filter Logs using an unbroken piece of text in the logs. Example: (GET || PUT) && HTTP" />
+                    </div>
                   </td>
                 </tr>
             </tbody>

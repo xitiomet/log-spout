@@ -11,6 +11,9 @@ var wsProtocol = 'ws';
 var httpUrl = '';
 var termAuth = '';
 var appendEnabled = true;
+var presetsData = [];
+var pendingPresetSelection = null;
+var loadingPreset = false;
 
 $.ajaxSetup({
     timeout:2000 // in milliseconds 
@@ -125,6 +128,8 @@ function sendEvent(wsEvent)
 function updateFilter()
 {
     var filter = document.getElementById('filterInput').value;
+    if (!loadingPreset)
+        resetPresetSelection();
     sendEvent({"filter": filter});
 }
 
@@ -136,7 +141,102 @@ function clearLog()
 function updateLog()
 {
     var log = document.getElementById('logs').value;
+    if (!loadingPreset)
+        resetPresetSelection();
     sendEvent({"log": log});
+}
+
+function resetPresetSelection()
+{
+    var presetSelect = document.getElementById('presets');
+    if (presetSelect != null)
+        presetSelect.value = "";
+}
+
+function populatePresets(presets)
+{
+    presetsData = Array.isArray(presets) ? presets : [];
+    var presetSelect = document.getElementById('presets');
+    var current = presetSelect.value;
+    presetSelect.innerHTML = "";
+    var newOpt = document.createElement("option");
+    newOpt.value = "";
+    newOpt.innerHTML = "(New Preset)";
+    presetSelect.appendChild(newOpt);
+    for (var i = 0; i < presetsData.length; i++)
+    {
+        var preset = presetsData[i];
+        var opt = document.createElement("option");
+        opt.value = preset.name;
+        opt.innerHTML = preset.name;
+        presetSelect.appendChild(opt);
+    }
+    var stillExists = presetsData.some(function(p) { return p.name == current; });
+    presetSelect.value = stillExists ? current : "";
+}
+
+function getPresetByName(name)
+{
+    for (var i = 0; i < presetsData.length; i++)
+    {
+        if (presetsData[i].name == name)
+            return presetsData[i];
+    }
+    return null;
+}
+
+function loadPreset()
+{
+    var name = document.getElementById('presets').value;
+    if (name == "")
+        return;
+    var preset = getPresetByName(name);
+    if (preset == null)
+        return;
+    loadingPreset = true;
+    document.getElementById('logs').value = preset.log || "";
+    document.getElementById('filterInput').value = preset.filter || "";
+    updateLog();
+    updateFilter();
+    loadingPreset = false;
+}
+
+function savePreset()
+{
+    var selected = document.getElementById('presets').value;
+    var log = document.getElementById('logs').value;
+    var filter = document.getElementById('filterInput').value;
+    var name;
+    if (selected == "")
+    {
+        name = prompt("Enter a name for this preset:", "");
+        if (name == null)
+            return;
+        name = name.trim();
+        if (name == "")
+            return;
+        if (getPresetByName(name) != null)
+        {
+            if (!confirm("A preset named \"" + name + "\" already exists. Overwrite it?"))
+                return;
+        }
+    } else {
+        name = selected;
+        if (!confirm("Overwrite the preset \"" + name + "\"?"))
+            return;
+    }
+    sendEvent({"savePreset": {"name": name, "log": log, "filter": filter}});
+    pendingPresetSelection = name;
+}
+
+function deletePreset()
+{
+    var selected = document.getElementById('presets').value;
+    if (selected == "")
+        return;
+    if (!confirm("Delete the preset \"" + selected + "\"?"))
+        return;
+    sendEvent({"deletePreset": selected});
 }
 
 function doAuth()
@@ -233,6 +333,9 @@ function setupWebsocket()
                     document.getElementById('topBar').style.display = 'block';
                     document.getElementById('filterInput').style.display = 'inline-block';
                     document.getElementById('logs').style.display = 'inline-block';
+                    document.getElementById('presets').style.display = 'inline-block';
+                    document.getElementById('savePresetBtn').style.display = 'inline-block';
+                    document.getElementById('deletePresetBtn').style.display = 'inline-block';
                     document.getElementById('filterIp').style.display = 'inline-block';
                     document.getElementById('eraser').style.display = 'inline-block';
                     var logsSelector = document.getElementById('logs');
@@ -250,6 +353,7 @@ function setupWebsocket()
                         }
                         logsSelector.appendChild(opt);
                     }
+                    populatePresets(jsonObject.presets);
                     termAuth = jsonObject.termAuth;
                     updateKCS(true)
                     sendEvent({
@@ -261,6 +365,16 @@ function setupWebsocket()
                     updateFilter();
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
+                } else if (action == 'presets') {
+                    populatePresets(jsonObject.presets);
+                    if (pendingPresetSelection != null)
+                    {
+                        if (getPresetByName(pendingPresetSelection) != null)
+                            document.getElementById('presets').value = pendingPresetSelection;
+                        pendingPresetSelection = null;
+                    }
+                } else if (action == 'presetError') {
+                    alert(jsonObject.error);
                 } else if (action == 'line') {
                     if (appendEnabled)
                     {
