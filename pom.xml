@@ -94,6 +94,13 @@
             <includes>
                 <include>**</include>
             </includes>
+            <excludes>
+                <exclude>**/node_modules/**/src/**</exclude>
+                <exclude>**/node_modules/**/typings/**</exclude>
+                <exclude>**/node_modules/**/*.ts</exclude>
+                <exclude>**/node_modules/**/*.map</exclude>
+                <exclude>**/node_modules/**/README.md</exclude>
+            </excludes>
             <targetPath>logspout</targetPath>
         </resource>
         <resource>
