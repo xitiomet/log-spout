@@ -3,8 +3,6 @@ package org.openstatic.log;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URLDecoder;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
@@ -15,7 +13,6 @@ import java.util.Iterator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openstatic.LogSpoutMain;
-import org.apache.commons.text.StringEscapeUtils;
 
 public class ProcessLogConnection implements LogConnection, Runnable
 {
@@ -135,36 +132,7 @@ public class ProcessLogConnection implements LogConnection, Runnable
         {
             while((line = br.readLine()) != null)
             {
-                String linePrefix = "";
-                String lineSuffix = "";
-                try
-                {
-                    if (this.config.optBoolean("_unescape", true))
-                        line = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("\\x"), "\\\\u00"));
-                    if (this.config.optBoolean("_fixescape", true))
-                        line = StringEscapeUtils.unescapeJava(line.replaceAll(Pattern.quote("#033["), "\\\\u001b["));
-                } catch (Exception e) {}
-                try
-                {
-                    if (this.config.optBoolean("_urldecode", false))
-                        line = URLDecoder.decode(line,Charset.forName("UTF-8"));
-                } catch (Exception e) {}
-                if (this.config.has("_highlight"))
-                {
-                    JSONObject rules = this.config.getJSONObject("_highlight");
-                    Set<String> keySet = rules.keySet();
-                    Iterator<String> keyIterator = keySet.iterator();
-                    while(keyIterator.hasNext())
-                    {
-                        String key = keyIterator.next();
-                        if (line.contains(key))
-                        {
-                            linePrefix = rules.getString(key);
-                            lineSuffix = "\u001b[0m";
-                        }
-                    }
-                }
-                final String fLine = linePrefix + line + lineSuffix;
+                final String fLine = LogLineFormatter.format(line, this.config);
                 ((ArrayList<LogConnectionListener>) this.listeners.clone()).forEach((listener) -> {
                     ArrayList<String> logPath = new ArrayList<String>();
                     logPath.add(this.getName());

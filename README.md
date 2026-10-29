@@ -121,7 +121,39 @@ each child and can be interpolated with `$(file)`:
 
 ### `_type` values
 
-Every leaf source declares a `_type`. The parser recognizes three:
+Every leaf source declares a `_type`. The parser recognizes four:
+
+#### `tail`
+
+Follows a local file directly in Java, without launching an external `tail`
+command. Like `tail -f`, it emits the last 10 lines on connection and then
+streams appended lines. Empty files are supported, and if the file is
+truncated, reading resumes from the beginning. It follows the open file
+descriptor, not a replacement file after rename/rotation (like `tail -f`,
+not `tail -F`). The file must exist and be readable when connecting; failures
+are reported through the usual disconnect-error callbacks.
+
+| Key           | Purpose |
+| ------------- | ------- |
+| `file`        | **Required.** Local file path; supports inherited variables and `$(var)` substitutions. |
+| `_name`       | Display name (supports `$(var)`). |
+| `_unescape`   | Decode `\xNN` and Java-style escapes (default `true`). |
+| `_fixescape`  | Decode `#033[` terminal escapes (default `true`). |
+| `_urldecode`  | URL-decode each line (default `false`). |
+| `_highlight`  | Same substring-based ANSI highlighting as `process`. |
+
+```json
+{
+    "file": "/var/log/apache2/parlor.me.access.log",
+    "_name": "$(file)",
+    "_type": "tail",
+    "_urldecode": true
+}
+```
+
+No `_execute` is needed. Lines use the platform's default charset, just like
+`process` output, and incomplete lines are held until a line ending arrives.
+Reconnecting emits the last 10 lines again.
 
 #### `process`
 

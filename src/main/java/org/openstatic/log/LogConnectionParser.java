@@ -2,7 +2,6 @@ package org.openstatic.log;
 
 import java.util.Iterator;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -53,6 +52,8 @@ public class LogConnectionParser
                 return new ForEachLineContainer(json);
             } else if (type.equals("process")) {
                 return new ProcessLogConnection(json);
+            } else if (type.equals("tail")) {
+                return new TailLogConnection(json);
             } else if (type.equals("remote")) {
                 return new RemoteLogConnection(json);
             }
@@ -114,7 +115,7 @@ public class LogConnectionParser
         for(Iterator<String> keyIterator = keySet.iterator(); keyIterator.hasNext();)
         {
             String key = keyIterator.next();
-            cs = cs.replaceAll(Pattern.quote("$(" + key + ")"), variables.get(key).toString());
+            cs = cs.replace("$(" + key + ")", variables.get(key).toString());
         }
         return cs;
     }
