@@ -135,7 +135,7 @@ are reported through the usual disconnect-error callbacks.
 
 | Key           | Purpose |
 | ------------- | ------- |
-| `file`        | **Required.** Local file path; supports inherited variables and `$(var)` substitutions. |
+| `_file`        | **Required.** Local file path; supports inherited variables and `$(var)` substitutions. |
 | `_name`       | Display name (supports `$(var)`). |
 | `_unescape`   | Decode `\xNN` and Java-style escapes (default `true`). |
 | `_fixescape`  | Decode `#033[` terminal escapes (default `true`). |
@@ -144,8 +144,8 @@ are reported through the usual disconnect-error callbacks.
 
 ```json
 {
-    "file": "/var/log/apache2/parlor.me.access.log",
-    "_name": "$(file)",
+    "_file": "/var/log/apache2/parlor.me.access.log",
+    "_name": "$(_file)",
     "_type": "tail",
     "_urldecode": true
 }
