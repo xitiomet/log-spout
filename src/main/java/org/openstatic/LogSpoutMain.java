@@ -20,6 +20,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
@@ -375,14 +376,36 @@ public class LogSpoutMain
             }
         });
         Collections.sort(files);
-        JSONArray sources = new JSONArray();
+        JSONObject config = new JSONObject().put("_name", directory.equals(".") ? root.toString() : directory)
+            .put("_sources", new JSONArray());
+        Map<Path, JSONObject> containers = new HashMap<Path, JSONObject>();
+        containers.put(root, config);
         for (Path path : files)
         {
-            sources.put(new JSONObject()
-                .put("_type", "tail").put("_file", path.toString()).put("_name", path.getFileName().toString()));
+            Path parent = root;
+            JSONObject container = config;
+            if (!path.getParent().equals(root))
+            {
+                for (Path component : root.relativize(path.getParent()))
+                {
+                    parent = parent.resolve(component);
+                    JSONObject child = containers.get(parent);
+                    if (child == null)
+                    {
+                        child = new JSONObject().put("_name", root.relativize(parent).toString()
+                            .replace(File.separatorChar, '/') + "/")
+                            .put("_sources", new JSONArray());
+                        container.getJSONArray("_sources").put(child);
+                        containers.put(parent, child);
+                    }
+                    container = child;
+                }
+            }
+            container.getJSONArray("_sources").put(new JSONObject()
+                .put("_type", "tail").put("_file", path.toString())
+                .put("_name", root.relativize(path).toString().replace(File.separatorChar, '/')));
         }
-        return new JSONObject().put("_name", directory.equals(".") ? root.toString() : directory)
-            .put("_sources", sources);
+        return config;
     }
 
     static boolean isLikelyBinary(Path path) throws IOException

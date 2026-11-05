@@ -27,7 +27,13 @@ are excluded, and binary content beyond the sample may go undetected.
 The generated root `_name` is the directory path exactly as supplied
 (including a trailing slash), except bare `-d` or `-d .` uses the full absolute
 current-directory path. Each source uses `_type: "tail"` with an
-absolute `_file` path and only the filename as its `_name`. Sources are sorted by
+absolute `_file` path and a root-relative `_name` using `/` separators on all
+platforms (for example, `dmesg` or `nginx/access.log`). Subdirectories containing
+accepted logs are nested containers with root-relative names ending in `/`
+(for example, `nginx/` or `nginx/archive/`) and their logs and child folders
+in `_sources`. Ancestors needed to reach logs
+are retained; branches with no accepted logs are omitted. Logs directly in the
+scanned directory remain in the root `_sources`. Sources are sorted by
 path; an empty directory produces an empty `_sources` array. Paths reporting
 filesystem errors (including access denial and Windows sharing locks) are
 skipped with `Skipping inaccessible path: <path>` on stderr, allowing the

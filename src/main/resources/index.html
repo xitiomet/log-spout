@@ -207,10 +207,10 @@
                       </select>
                       <button type="button" id="savePresetBtn" title="Save Preset" onclick="savePreset()" style="border: 1px white dotted; height: 32px; background-color: #442222; color: orange; cursor: pointer; display: none;">Save</button>
                       <button type="button" id="deletePresetBtn" title="Delete Preset" onclick="deletePreset()" style="border: 1px white dotted; height: 32px; background-color: #442222; color: orange; cursor: pointer; display: none;">Delete</button>
-                      <select style="border: 1px white dotted; height: 32px; flex: 0 0 18%; background-color: #442222; color: lightcoral; display: none;" onchange="updateLog()" id="logs" name="logs">
+                      <select style="box-sizing: border-box; border: 1px white dotted; height: 32px; flex: 0 1 18%; min-width: 0; max-width: 320px; background-color: #442222; color: lightcoral; display: none;" onchange="updateLog()" id="logs" name="logs">
                         <option value="">- Select Log -</option>
                       </select>
-                      <input type="text" id="filterInput" style="box-sizing: border-box; border: 1px white dotted; flex: 1 1 auto; min-width: 0; height: 32px; background-color: #442222; color: orange; display: none;" onchange="updateFilter()" placeholder="Filter Logs using an unbroken piece of text in the logs. Example: (GET || PUT) && HTTP" />
+                      <input type="text" id="filterInput" style="box-sizing: border-box; border: 1px white dotted; flex: 1 1 0; min-width: 0; height: 32px; background-color: #442222; color: orange; display: none;" onchange="updateFilter()" placeholder="Filter Logs using an unbroken piece of text in the logs. Example: (GET || PUT) && HTTP" />
                     </div>
                   </td>
                 </tr>

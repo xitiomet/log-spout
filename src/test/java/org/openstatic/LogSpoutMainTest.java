@@ -46,16 +46,57 @@ public class LogSpoutMainTest
         String suppliedPath = directory + "/";
         JSONObject config = LogSpoutMain.generateDirectoryConfig(suppliedPath);
         assertEquals(suppliedPath, config.getString("_name"));
-        JSONArray sources = config.getJSONArray("_sources");
-        assertEquals(expected.size(), sources.length());
+        List<JSONObject> sources = tailSources(config);
+        assertEquals(expected.size(), sources.size());
         for (int i = 0; i < expected.size(); i++)
         {
-            JSONObject source = sources.getJSONObject(i);
+            JSONObject source = sources.get(i);
             assertEquals("tail", source.getString("_type"));
             assertEquals(expected.get(i).toString(), source.getString("_file"));
-            assertEquals(expected.get(i).getFileName().toString(), source.getString("_name"));
+            assertEquals(directory.relativize(expected.get(i)).toString().replace(File.separatorChar, '/'),
+                source.getString("_name"));
             assertFalse(source.has("_execute"));
         }
+    }
+
+    @Test
+    public void directoryContainersMirrorTreeAndExcludeEmptyBranches() throws Exception
+    {
+        Path root = this.temporary.newFolder().toPath();
+        Path direct = Files.createFile(root.resolve("root.log"));
+        Path service = Files.createDirectory(root.resolve("service"));
+        Path serviceLog = Files.createFile(service.resolve("app.log"));
+        Path deep = Files.createDirectories(service.resolve("ancestor/deep"));
+        Path deepLog = Files.createFile(deep.resolve("app.log"));
+        Files.createDirectory(root.resolve("empty"));
+        Path invalid = Files.createDirectory(root.resolve("binary-only"));
+        Files.write(invalid.resolve("bad.log"), new byte[] {0});
+        Files.writeString(invalid.resolve("notes.txt"), "not a log");
+
+        JSONObject config = LogSpoutMain.generateDirectoryConfig(root.toString());
+        JSONArray sources = config.getJSONArray("_sources");
+        assertEquals(2, sources.length());
+        assertEquals(direct.toString(), sources.getJSONObject(0).getString("_file"));
+        assertEquals("root.log", sources.getJSONObject(0).getString("_name"));
+        JSONObject folder = sources.getJSONObject(1);
+        assertEquals("service/", folder.getString("_name"));
+        assertFalse(folder.has("_type"));
+        assertFalse(folder.has("_file"));
+        JSONArray children = folder.getJSONArray("_sources");
+        assertEquals(2, children.length());
+        JSONObject ancestor = children.getJSONObject(0);
+        assertEquals("service/ancestor/", ancestor.getString("_name"));
+        JSONObject deepest = ancestor.getJSONArray("_sources").getJSONObject(0);
+        assertEquals("service/ancestor/deep/", deepest.getString("_name"));
+        assertEquals(deepLog.toString(), deepest.getJSONArray("_sources").getJSONObject(0).getString("_file"));
+        assertEquals("service/ancestor/deep/app.log",
+            deepest.getJSONArray("_sources").getJSONObject(0).getString("_name"));
+        assertEquals(serviceLog.toString(), children.getJSONObject(1).getString("_file"));
+        assertEquals("service/app.log", children.getJSONObject(1).getString("_name"));
+        assertEquals(3, tailSources(config).size());
+        org.openstatic.log.LogConnection connection = org.openstatic.log.LogConnectionParser.parse(config);
+        assertTrue(connection instanceof org.openstatic.log.LogConnectionContainer);
+        connection.disconnect();
     }
 
     @Test
@@ -92,7 +133,8 @@ public class LogSpoutMainTest
                 assertEquals(directory + "/", config.getString("_name"));
                 JSONArray sources = config.getJSONArray("_sources");
                 assertEquals(1, sources.length());
-                assertEquals(log.toString(), sources.getJSONObject(0).getString("_file"));
+                assertEquals("public/", sources.getJSONObject(0).getString("_name"));
+                assertEquals(log.toString(), tailSources(config).get(0).getString("_file"));
                 assertTrue(Files.readString(errors.toPath())
                     .contains("Skipping inaccessible path: " + privateDirectory));
             } finally {
@@ -135,7 +177,7 @@ public class LogSpoutMainTest
             assertEquals(diagnostics, 0, process.exitValue());
             JSONObject output = new JSONObject(new String(process.getInputStream().readAllBytes(),
                 StandardCharsets.UTF_8));
-            assertEquals(logs.size(), output.getJSONArray("_sources").length());
+            assertEquals(logs.size(), tailSources(output).size());
             List<String> found = diagnostics.lines().filter(line -> line.startsWith("Found Log: ")).toList();
             assertEquals(logs.size(), found.size());
             for (Path log : logs)
@@ -770,6 +812,20 @@ public class LogSpoutMainTest
     private String quote(String value)
     {
         return "'" + value.replace("'", "'\"'\"'") + "'";
+    }
+
+    private List<JSONObject> tailSources(JSONObject config)
+    {
+        List<JSONObject> sources = new ArrayList<JSONObject>();
+        for (Object value : config.getJSONArray("_sources"))
+        {
+            JSONObject source = (JSONObject) value;
+            if (source.has("_sources"))
+                sources.addAll(tailSources(source));
+            else
+                sources.add(source);
+        }
+        return sources;
     }
 
     private String expectedScript(String... args) throws Exception
