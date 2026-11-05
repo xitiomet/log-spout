@@ -55,7 +55,16 @@ log-spout -d /var/log/ -f _TEMP_FILE_ -g system-logs.sh
 
 # Rescan, write a temporary config, and start without saving a permanent config.
 log-spout -d /var/log/ -f _TEMP_FILE_ -a
+
+# Shortcuts: -s or -a without -f automatically uses a temporary config.
+log-spout -d -s
+log-spout -d /var/log/ -a
 ```
+
+When `-d` is used without `-f` or `-g`, either `-s` or `-a` creates a temporary
+config and starts normally instead of printing JSON. Existing default configs
+are left untouched. Without either output option, the generated JSON is printed.
+`-g` takes priority over this shortcut and retains the rules below.
 
 With `-g -d` and no `-f`, the config is saved as `.log-spout.json` in the
 current working directory, and the script loads its absolute path without

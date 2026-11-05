@@ -139,6 +139,8 @@ public class LogSpoutMain
                 LogSpoutMain.verbose = true;
             }
             boolean temporaryConfig = "_TEMP_FILE_".equals(cmd.getOptionValue("f"));
+            boolean automaticTemporaryConfig = cmd.hasOption("d") && !cmd.hasOption("f")
+                && !cmd.hasOption("g") && (cmd.hasOption("s") || cmd.hasOption("a"));
             boolean defaultDirectoryConfig = cmd.hasOption("d") && cmd.hasOption("g") && !cmd.hasOption("f");
             boolean overwriteDefaultConfig = false;
             if (temporaryConfig && !cmd.hasOption("d"))
@@ -146,7 +148,7 @@ public class LogSpoutMain
             if (cmd.hasOption("d"))
             {
                 LogSpoutMain.settings = generateDirectoryConfig(cmd.getOptionValue("d", "."));
-                if (temporaryConfig && !cmd.hasOption("g"))
+                if ((temporaryConfig || automaticTemporaryConfig) && !cmd.hasOption("g"))
                 {
                     LogSpoutMain.configFile = Files.createTempFile("log-spout-", ".json").toFile();
                     LogSpoutMain.configFile.deleteOnExit();

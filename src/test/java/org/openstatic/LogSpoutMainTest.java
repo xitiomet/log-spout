@@ -108,12 +108,12 @@ public class LogSpoutMainTest
     {
         Path directory = this.temporary.newFolder().toPath();
         Files.createFile(directory.resolve("app.log"));
-        Process process = runCli("--directory", directory + "/", "-e", "ERROR", "-a");
+        Process process = runCli("--directory", directory + "/", "-e", "ERROR");
         JSONObject output = new JSONObject(new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
         assertEquals(directory + "/", output.getString("_name"));
         assertEquals(1, output.getJSONArray("_sources").length());
         assertEquals("ERROR", output.getString("_filter"));
-        assertEquals(8662, output.getInt("apiPort"));
+        assertFalse(output.has("apiPort"));
     }
 
     @Test
@@ -396,6 +396,76 @@ public class LogSpoutMainTest
         assertTrue(script.contains(" -d "));
         assertFalse(script.contains(" -d -f"));
         assertTrue(script.contains("_TEMP_FILE_"));
+    }
+
+    @Test
+    public void directoryOutputOptionsUseTemporaryConfigsUnlessGeneratingScript() throws Exception
+    {
+        Path directory = this.temporary.getRoot().toPath();
+        Files.writeString(directory.resolve("app.log"), "hello\n");
+        Path defaultConfig = directory.resolve(".log-spout.json");
+        String original = "{\"_name\":\"keep me\"}";
+        Files.writeString(defaultConfig, original);
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+        for (boolean bare : Arrays.asList(false, true))
+        {
+            for (String option : Arrays.asList("-s", "-a"))
+            {
+                Path tempDirectory = this.temporary.newFolder().toPath();
+                List<String> command = new ArrayList<String>(Arrays.asList(java,
+                    "-Djava.io.tmpdir=" + tempDirectory, "-cp", classpath, LogSpoutMain.class.getName(), "-d"));
+                if (!bare)
+                    command.add(directory.toString());
+                command.add(option);
+                if (option.equals("-a"))
+                    command.add("0");
+                File errors = this.temporary.newFile();
+                Process process = new ProcessBuilder(command).directory(this.temporary.getRoot())
+                    .redirectError(errors).start();
+                try
+                {
+                    Path config = null;
+                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                    while (config == null && System.nanoTime() < deadline)
+                    {
+                        try (java.util.stream.Stream<Path> files = Files.list(tempDirectory))
+                        {
+                            config = files.filter(path -> path.getFileName().toString().endsWith(".json"))
+                                .findFirst().orElse(null);
+                        }
+                        Thread.sleep(50);
+                    }
+                    assertNotNull("No temporary config: " + Files.readString(errors.toPath()), config);
+                    JSONObject saved = new JSONObject(Files.readString(config));
+                    assertEquals(bare ? "." : directory.toString(), saved.getString("_name"));
+                    assertEquals(1, saved.getJSONArray("_sources").length());
+                    assertEquals(option.equals("-a"), saved.has("apiPort"));
+                    assertTrue(process.isAlive());
+                    assertEquals(original, Files.readString(defaultConfig));
+                    assertFalse(Files.readString(errors.toPath()).contains("Overwrite?"));
+                } finally {
+                    stop(process);
+                }
+            }
+        }
+        for (String option : Arrays.asList("-s", "-a"))
+        {
+            File errors = this.temporary.newFile();
+            Path script = directory.resolve("launch.sh");
+            Process process = startCli(errors, "-d", "-g", script.toString(), option);
+            try
+            {
+                process.getOutputStream().close();
+                assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+                assertEquals(0, process.exitValue());
+                assertTrue(Files.readString(errors.toPath()).contains("Overwrite? [y/N]"));
+                assertEquals(original, Files.readString(defaultConfig));
+                assertFalse(Files.exists(LogSpoutMain.launchScriptFile(script.toString()).toPath()));
+            } finally {
+                stop(process);
+            }
+        }
     }
 
     @Test
