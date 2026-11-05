@@ -376,6 +376,8 @@ function setupWebsocket()
                             selector.appendChild(new Option(logName, logName));
                         if (jsonObject.logs.indexOf(selectedLog) != -1)
                             selector.value = selectedLog;
+                        else if (selector.options.length > 0)
+                            updateLog(); // previous log vanished (e.g. renamed by remote metadata); tell the server
                     }
                     if (pendingPresetSelection != null)
                     {
