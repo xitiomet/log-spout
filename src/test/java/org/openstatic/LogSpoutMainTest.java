@@ -127,6 +127,42 @@ public class LogSpoutMainTest
     }
 
     @Test
+    public void nameOverrideIsPrintedAndSavedWithDirectoryConfigs() throws Exception
+    {
+        Path directory = this.temporary.newFolder().toPath();
+        Files.createFile(directory.resolve("app.log"));
+        Process process = runCli("-d", directory.toString(), "--name", "My Logs");
+        JSONObject printed = new JSONObject(new String(process.getInputStream().readAllBytes(),
+            StandardCharsets.UTF_8));
+        assertEquals("My Logs", printed.getString("_name"));
+        assertEquals("app.log", printed.getJSONArray("_sources").getJSONObject(0).getString("_name"));
+
+        Path config = this.temporary.getRoot().toPath().resolve("named.json");
+        Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
+        runCli("-d", directory.toString(), "-n", "Saved Logs", "-f", config.toString(), "-g", script.toString());
+        assertEquals("Saved Logs", new JSONObject(Files.readString(config)).getString("_name"));
+        String generated = Files.readString(LogSpoutMain.launchScriptFile(script.toString()).toPath());
+        assertEquals(expectedScript("-n", "Saved Logs", "-f", config.toString(), "-g", script.toString()), generated);
+
+        runCli("-d", directory.toString(), "-n", "Default Logs", "-g", script.toString());
+        assertEquals("Default Logs", new JSONObject(Files.readString(
+            this.temporary.getRoot().toPath().resolve(".log-spout.json"))).getString("_name"));
+    }
+
+    @Test
+    public void nameOverrideForLoadedConfigIsPreservedInScriptWithoutRewritingFile() throws Exception
+    {
+        Path config = this.temporary.newFile("existing.json").toPath();
+        String original = "{\"_name\":\"Original\",\"_sources\":[]}";
+        Files.writeString(config, original);
+        Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
+        runCli("-f", config.toString(), "-n", "Override", "-g", script.toString());
+        assertEquals(original, Files.readString(config));
+        assertEquals(expectedScript("-f", config.toString(), "-n", "Override", "-g", script.toString()),
+            Files.readString(LogSpoutMain.launchScriptFile(script.toString()).toPath()));
+    }
+
+    @Test
     public void emptyDirectoryProducesEmptySources() throws Exception
     {
         Path directory = this.temporary.newFolder().toPath();

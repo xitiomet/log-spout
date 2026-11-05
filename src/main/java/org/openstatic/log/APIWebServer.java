@@ -380,8 +380,10 @@ public class APIWebServer implements Runnable, LogConnectionListener
 
     }
 
-    public static class ApiServlet extends HttpServlet {
-        public JSONObject readJSONObjectPOST(HttpServletRequest request) {
+    public static class ApiServlet extends HttpServlet 
+    {
+        public JSONObject readJSONObjectPOST(HttpServletRequest request) 
+        {
             StringBuffer jb = new StringBuffer();
             String line = null;
             try {

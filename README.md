@@ -12,6 +12,12 @@ WebSocket API so other instances (or browsers) can subscribe to them.
 
 Run `log-spout -?` for the full option list.
 
+Use `-n "My Logs"` or `--name "My Logs"` to override the root `_name`.
+With `-d`, the override is included in the printed or saved config, including
+temporary configs. With a loaded config, it changes the runtime name without
+rewriting the file. Generated scripts retain the override. Child log and
+directory names are unchanged.
+
 ### Generate a config from a directory
 
 `-d`, or `--directory`, recursively discovers regular files ending in `.log`,

@@ -195,6 +195,11 @@ public class LogSpoutMain
                 }
             }
 
+            if (cmd.hasOption("n"))
+            {
+                LogSpoutMain.settings.put("_name", cmd.getOptionValue("n"));
+            }
+
             if (cmd.hasOption("e"))
             {
                 LogSpoutMain.settings.put("_filter", cmd.getOptionValue("e"));
@@ -319,6 +324,7 @@ public class LogSpoutMain
             "Generate a tail config by recursively scanning a directory (default: current directory)");
         directoryOption.setOptionalArg(true);
         options.addOption(directoryOption);
+        options.addOption(new Option("n", "name", true, "Override the root config name"));
         options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
