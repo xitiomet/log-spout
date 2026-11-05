@@ -381,7 +381,8 @@ public class LogSpoutMain
             sources.put(new JSONObject()
                 .put("_type", "tail").put("_file", path.toString()).put("_name", path.getFileName().toString()));
         }
-        return new JSONObject().put("_name", directory).put("_sources", sources);
+        return new JSONObject().put("_name", directory.equals(".") ? root.toString() : directory)
+            .put("_sources", sources);
     }
 
     static boolean isLikelyBinary(Path path) throws IOException

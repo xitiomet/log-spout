@@ -383,10 +383,18 @@ public class LogSpoutMainTest
         Files.writeString(this.temporary.getRoot().toPath().resolve("app.log"), "hello\n");
         Process process = runCli("-d");
         JSONObject config = new JSONObject(new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
-        assertEquals(".", config.getString("_name"));
+        assertEquals(this.temporary.getRoot().toPath().toString(), config.getString("_name"));
         assertEquals(1, config.getJSONArray("_sources").length());
         assertEquals(this.temporary.getRoot().toPath().resolve("app.log").toString(),
             config.getJSONArray("_sources").getJSONObject(0).getString("_file"));
+    }
+
+    @Test
+    public void explicitDotDirectoryUsesFullPathAsRootName() throws Exception
+    {
+        Process process = runCli("-d", ".");
+        JSONObject config = new JSONObject(new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
+        assertEquals(this.temporary.getRoot().toPath().toString(), config.getString("_name"));
     }
 
     @Test
@@ -395,7 +403,8 @@ public class LogSpoutMainTest
         Path config = this.temporary.getRoot().toPath().resolve(".log-spout.json");
         Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
         runCli("-d", "-g", script.toString());
-        assertEquals(".", new JSONObject(Files.readString(config)).getString("_name"));
+        assertEquals(this.temporary.getRoot().toPath().toString(),
+            new JSONObject(Files.readString(config)).getString("_name"));
         assertEquals(expectedScript("-f", config.toString(), "-g", script.toString()),
             Files.readString(LogSpoutMain.launchScriptFile(script.toString()).toPath()));
     }
@@ -422,7 +431,8 @@ public class LogSpoutMainTest
                 assertEquals(0, process.getInputStream().readAllBytes().length);
                 if (response.equals("yes\n"))
                 {
-                    assertEquals(".", new JSONObject(Files.readString(config)).getString("_name"));
+                    assertEquals(this.temporary.getRoot().toPath().toString(),
+                        new JSONObject(Files.readString(config)).getString("_name"));
                     assertTrue(Files.exists(generatedScript));
                 } else {
                     assertEquals(original, Files.readString(config));
@@ -483,7 +493,7 @@ public class LogSpoutMainTest
                     }
                     assertNotNull("No temporary config: " + Files.readString(errors.toPath()), config);
                     JSONObject saved = new JSONObject(Files.readString(config));
-                    assertEquals(bare ? "." : directory.toString(), saved.getString("_name"));
+                    assertEquals(directory.toString(), saved.getString("_name"));
                     assertEquals(1, saved.getJSONArray("_sources").length());
                     assertEquals(option.equals("-a"), saved.has("apiPort"));
                     assertTrue(process.isAlive());

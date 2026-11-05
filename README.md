@@ -25,7 +25,8 @@ bytes, and non-ASCII bytes are allowed; empty files remain eligible.
 This is a heuristic, not encoding validation: UTF-16 files containing NULs
 are excluded, and binary content beyond the sample may go undetected.
 The generated root `_name` is the directory path exactly as supplied
-(including a trailing slash), and each source uses `_type: "tail"` with an
+(including a trailing slash), except bare `-d` or `-d .` uses the full absolute
+current-directory path. Each source uses `_type: "tail"` with an
 absolute `_file` path and only the filename as its `_name`. Sources are sorted by
 path; an empty directory produces an empty `_sources` array. Paths reporting
 filesystem errors (including access denial and Windows sharing locks) are
