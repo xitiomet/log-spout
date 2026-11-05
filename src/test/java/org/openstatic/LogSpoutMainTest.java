@@ -84,9 +84,7 @@ public class LogSpoutMainTest
         assertFalse(folder.has("_file"));
         JSONArray children = folder.getJSONArray("_sources");
         assertEquals(2, children.length());
-        JSONObject ancestor = children.getJSONObject(0);
-        assertEquals("service/ancestor/", ancestor.getString("_name"));
-        JSONObject deepest = ancestor.getJSONArray("_sources").getJSONObject(0);
+        JSONObject deepest = children.getJSONObject(0);
         assertEquals("service/ancestor/deep/", deepest.getString("_name"));
         assertEquals(deepLog.toString(), deepest.getJSONArray("_sources").getJSONObject(0).getString("_file"));
         assertEquals("service/ancestor/deep/app.log",
@@ -97,6 +95,35 @@ public class LogSpoutMainTest
         org.openstatic.log.LogConnection connection = org.openstatic.log.LogConnectionParser.parse(config);
         assertTrue(connection instanceof org.openstatic.log.LogConnectionContainer);
         connection.disconnect();
+    }
+
+    @Test
+    public void collapsesSingleDirectoryChainsButPreservesRootAndBranches() throws Exception
+    {
+        Path root = this.temporary.newFolder().toPath();
+        Path deep = Files.createDirectories(root.resolve("svn/project/snappy"));
+        Path log = Files.createFile(deep.resolve("config.log"));
+        JSONObject config = LogSpoutMain.generateDirectoryConfig(root.toString());
+        assertEquals(root.toString(), config.getString("_name"));
+        JSONArray sources = config.getJSONArray("_sources");
+        assertEquals(1, sources.length());
+        JSONObject collapsed = sources.getJSONObject(0);
+        assertEquals("svn/project/snappy/", collapsed.getString("_name"));
+        assertEquals(1, collapsed.getJSONArray("_sources").length());
+        JSONObject tail = collapsed.getJSONArray("_sources").getJSONObject(0);
+        assertEquals("tail", tail.getString("_type"));
+        assertEquals("svn/project/snappy/config.log", tail.getString("_name"));
+        assertEquals(log.toString(), tail.getString("_file"));
+
+        Path sibling = Files.createDirectories(root.resolve("svn/project/other"));
+        Files.createFile(sibling.resolve("other.log"));
+        config = LogSpoutMain.generateDirectoryConfig(root.toString());
+        collapsed = config.getJSONArray("_sources").getJSONObject(0);
+        assertEquals("svn/project/", collapsed.getString("_name"));
+        assertEquals(2, collapsed.getJSONArray("_sources").length());
+        assertEquals("svn/project/other/", collapsed.getJSONArray("_sources").getJSONObject(0).getString("_name"));
+        assertEquals("svn/project/snappy/", collapsed.getJSONArray("_sources").getJSONObject(1).getString("_name"));
+        assertEquals(2, tailSources(config).size());
     }
 
     @Test

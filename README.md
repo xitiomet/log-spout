@@ -31,8 +31,10 @@ absolute `_file` path and a root-relative `_name` using `/` separators on all
 platforms (for example, `dmesg` or `nginx/access.log`). Subdirectories containing
 accepted logs are nested containers with root-relative names ending in `/`
 (for example, `nginx/` or `nginx/archive/`) and their logs and child folders
-in `_sources`. Ancestors needed to reach logs
-are retained; branches with no accepted logs are omitted. Logs directly in the
+in `_sources`. After discovery, directory chains whose only entry is another
+directory are collapsed to the deepest container, retaining its root-relative
+name. The scan root, branching directories, and directories containing logs
+are preserved; branches with no accepted logs are omitted. Logs directly in the
 scanned directory remain in the root `_sources`. Sources are sorted by
 path; an empty directory produces an empty `_sources` array. Paths reporting
 filesystem errors (including access denial and Windows sharing locks) are

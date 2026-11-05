@@ -405,7 +405,27 @@ public class LogSpoutMain
                 .put("_type", "tail").put("_file", path.toString())
                 .put("_name", root.relativize(path).toString().replace(File.separatorChar, '/')));
         }
+        collapseDirectoryChains(config);
         return config;
+    }
+
+    private static void collapseDirectoryChains(JSONObject container)
+    {
+        JSONArray sources = container.getJSONArray("_sources");
+        for (int i = 0; i < sources.length(); i++)
+        {
+            JSONObject source = sources.getJSONObject(i);
+            if (!source.has("_sources"))
+                continue;
+            collapseDirectoryChains(source);
+            JSONArray children = source.getJSONArray("_sources");
+            while (children.length() == 1 && children.getJSONObject(0).has("_sources"))
+            {
+                source = children.getJSONObject(0);
+                children = source.getJSONArray("_sources");
+            }
+            sources.put(i, source);
+        }
     }
 
     static boolean isLikelyBinary(Path path) throws IOException
