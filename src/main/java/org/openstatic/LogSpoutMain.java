@@ -3,16 +3,20 @@ package org.openstatic;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
@@ -109,21 +113,10 @@ public class LogSpoutMain
         System.setProperty("org.eclipse.jetty.LEVEL", "OFF");
         //System.setProperty("org.eclipse.jetty.server.Request.maxFormContentSize","1000000000");
         
-        Options options = new Options();
+        Options options = commandLineOptions();
         CommandLineParser parser = new DefaultParser();
         LogSpoutMain.settings = new JSONObject();
-        options.addOption(new Option("?", "help", false, "Shows help"));
-        options.addOption(new Option("f", "config", true, "Specify config file"));
-        options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
-        options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
-        options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
-        options.addOption(new Option("g", "generate", true, "Generate a shell script to launch this log"));
-        options.addOption(new Option("p", "password", true, "Set password to send to remote connection -c, or for local api -a"));
-        options.addOption(new Option("l", "log", true, "Select which log to view"));
-        options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
-        Option apiOption = new Option("a", "api", true, "Turn on api server, optional argument to specify port (default 8662)");
-        apiOption.setOptionalArg(true);
-        options.addOption(apiOption);
+        LogSpoutMain.configFile = null;
 
         boolean stdoutLogs = false;
         try
@@ -142,7 +135,20 @@ public class LogSpoutMain
             {
                 LogSpoutMain.verbose = true;
             }
-            if (cmd.hasOption("f"))
+            boolean temporaryConfig = "_TEMP_FILE_".equals(cmd.getOptionValue("f"));
+            if (temporaryConfig && !cmd.hasOption("d"))
+                throw new IllegalArgumentException("-f _TEMP_FILE_ requires -d / --directory");
+            if (cmd.hasOption("d"))
+            {
+                LogSpoutMain.settings = generateDirectoryConfig(cmd.getOptionValue("d"));
+                if (temporaryConfig && !cmd.hasOption("g"))
+                {
+                    LogSpoutMain.configFile = Files.createTempFile("log-spout-", ".json").toFile();
+                    LogSpoutMain.configFile.deleteOnExit();
+                } else if (cmd.hasOption("f") && !temporaryConfig) {
+                    LogSpoutMain.configFile = new File(cmd.getOptionValue("f"));
+                }
+            } else if (cmd.hasOption("f"))
             {
                 String filename = cmd.getOptionValue("f");
                 File file = new File(filename);
@@ -197,45 +203,28 @@ public class LogSpoutMain
                 LogSpoutMain.settings.put("apiPort", Integer.valueOf(cmd.getOptionValue("a", "8662")));
             }
 
+            if (cmd.hasOption("d"))
+            {
+                if (LogSpoutMain.configFile == null)
+                {
+                    if (!cmd.hasOption("g"))
+                    {
+                        System.out.println(LogSpoutMain.settings.toString(2));
+                        return;
+                    }
+                } else {
+                    Files.writeString(LogSpoutMain.configFile.toPath(), LogSpoutMain.settings.toString(2));
+                }
+            }
+
             if (cmd.hasOption("g"))
             {
-                try
-                {
-                    File filename = new File(cmd.getOptionValue("g"));
-                    FileOutputStream fos = new FileOutputStream(filename);
-                    PrintWriter pw = new PrintWriter(fos);
-                    pw.println("#!/bin/bash");
-                    String lsCommand = "log-spout";
-                    ArrayList<String> argsCollection = new ArrayList<String>(Arrays.asList(args));
-                    boolean hasStdOutOrApi = false;
-                    for(Iterator<String> iterator = argsCollection.iterator(); iterator.hasNext(); )
-                    {
-                        String nextArg = iterator.next();
-                        if ("-s".equals(nextArg) || "-a".equals(nextArg) || "--stdout".equals(nextArg) || "--api".equals(nextArg))
-                        {
-                            hasStdOutOrApi = true;
-                        }
-                        if (!"-g".equals(nextArg) && !"--generate".equals(nextArg))
-                        {
-                            lsCommand += " " + nextArg;
-                        } else if (iterator.hasNext()) {
-                            iterator.next();
-                        }
-                    }
-                    if (!hasStdOutOrApi)
-                    {
-                        lsCommand += " -s";
-                    }
-                    pw.println(lsCommand);
-                    pw.flush();
-                    fos.close();
-                    shellExec(new String[] {"chmod","+x",filename.toString()});
-                    System.err.println("Generated: " + filename.toString());
-                    System.exit(0);
-                } catch (Exception e) {
-                    e.printStackTrace(System.err);
-                }
-
+                File filename = new File(cmd.getOptionValue("g"));
+                Files.writeString(filename.toPath(), generateLaunchScript(cmd));
+                if (!filename.setExecutable(true))
+                    throw new IOException("Cannot make script executable: " + filename);
+                System.err.println("Generated: " + filename);
+                return;
             }
 
             if (!LogSpoutMain.settings.has("hostname"))
@@ -244,6 +233,8 @@ public class LogSpoutMain
             }
         } catch (Exception e) {
             e.printStackTrace(System.err);
+            System.exit(1);
+            return;
         }
         final LogConnectionContainer lcc = LogConnectionParser.parseInitial(LogSpoutMain.settings);
         if (stdoutLogs)
@@ -289,6 +280,95 @@ public class LogSpoutMain
                 Thread.sleep(1000);
             } catch (Exception e) {}
         }
+    }
+
+    static Options commandLineOptions()
+    {
+        Options options = new Options();
+        options.addOption(new Option("?", "help", false, "Shows help"));
+        options.addOption(new Option("f", "config", true, "Specify config file (use _TEMP_FILE_ with -d for a fresh temporary config)"));
+        options.addOption(new Option("d", "directory", true, "Generate a tail config by recursively scanning a directory"));
+        options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
+        options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
+        options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
+        options.addOption(new Option("g", "generate", true, "Generate a shell script to launch this log"));
+        options.addOption(new Option("p", "password", true, "Set password to send to remote connection -c, or for local api -a"));
+        options.addOption(new Option("l", "log", true, "Select which log to view"));
+        options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
+        Option apiOption = new Option("a", "api", true, "Turn on api server, optional argument to specify port (default 8662)");
+        apiOption.setOptionalArg(true);
+        options.addOption(apiOption);
+        return options;
+    }
+
+    static JSONObject generateDirectoryConfig(String directory) throws IOException
+    {
+        Path root = Path.of(directory).toAbsolutePath().normalize();
+        if (!Files.isDirectory(root))
+            throw new IOException("Not a directory: " + directory);
+        ArrayList<Path> files = new ArrayList<Path>();
+        Files.walkFileTree(root, new SimpleFileVisitor<Path>()
+        {
+            @Override
+            public FileVisitResult visitFile(Path path, BasicFileAttributes attributes)
+            {
+                String name = path.getFileName().toString();
+                if (Files.isRegularFile(path) && (name.endsWith(".log") || name.endsWith(".out")
+                    || name.endsWith(".err") || name.equals("syslog") || name.equals("dmesg")
+                    || name.equals("messages")))
+                    files.add(path);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path path, IOException error) throws IOException
+            {
+                if (error instanceof AccessDeniedException)
+                {
+                    System.err.println("Skipping inaccessible path: " + path);
+                    return FileVisitResult.CONTINUE;
+                }
+                throw error;
+            }
+        });
+        Collections.sort(files);
+        JSONArray sources = new JSONArray();
+        for (Path path : files)
+        {
+            sources.put(new JSONObject()
+                .put("_type", "tail").put("_file", path.toString()).put("_name", path.getFileName().toString()));
+        }
+        return new JSONObject().put("_name", directory).put("_sources", sources);
+    }
+
+    static String generateLaunchScript(CommandLine cmd)
+    {
+        StringBuilder command = new StringBuilder("#!/bin/bash\nlog-spout");
+        boolean temporaryConfig = cmd.hasOption("d")
+            && (!cmd.hasOption("f") || "_TEMP_FILE_".equals(cmd.getOptionValue("f")));
+        for (Option option : cmd.getOptions())
+        {
+            if (option.getOpt().equals("g") || (option.getOpt().equals("d") && !temporaryConfig))
+                continue;
+            command.append(" -").append(option.getOpt());
+            if (option.getValues() != null)
+            {
+                for (String value : option.getValues())
+                    command.append(" ").append(shellQuote(value));
+            }
+        }
+        if (cmd.hasOption("d") && !cmd.hasOption("f"))
+            command.append(" -f _TEMP_FILE_");
+        if (!cmd.hasOption("s") && !cmd.hasOption("a"))
+            command.append(" -s");
+        for (String argument : cmd.getArgList())
+            command.append(" ").append(shellQuote(argument));
+        return command.append("\n").toString();
+    }
+
+    private static String shellQuote(String value)
+    {
+        return "'" + value.replace("'", "'\"'\"'") + "'";
     }
 
     public static void showIPS()

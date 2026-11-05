@@ -12,6 +12,47 @@ WebSocket API so other instances (or browsers) can subscribe to them.
 
 Run `log-spout -?` for the full option list.
 
+### Generate a config from a directory
+
+`-d`, or `--directory`, recursively discovers regular files ending in `.log`,
+`.out`, or `.err`, and files named exactly `syslog`, `dmesg`, or `messages`.
+Matching is case-sensitive; rotated/compressed files such as `syslog.1` and
+`access.log.gz` are excluded. Directory symlinks are not traversed.
+The generated root `_name` is the directory path exactly as supplied
+(including a trailing slash), and each source uses `_type: "tail"` with an
+absolute `_file` path and only the filename as its `_name`. Sources are sorted by
+path; an empty directory produces an empty `_sources` array. Access-denied
+paths are skipped with a notice on stderr, allowing accessible directories
+to be scanned. Invalid directories and other I/O failures report an error
+instead of starting Log Spout.
+
+```sh
+# Print JSON to stdout and exit (does not start the server or stream logs).
+log-spout -d /var/log/
+
+# Save the generated config, replacing it if it exists, and start normally.
+log-spout -d /var/log/ -f system-logs.json -a
+
+# Save the config and generate an executable launch script instead of starting.
+log-spout -d /var/log/ -f system-logs.json -g system-logs.sh -a
+
+# Generate a launch script that creates a fresh temporary config at each launch.
+log-spout -d /var/log/ -g system-logs.sh
+
+# Rescan, write a temporary config, and start without saving a permanent config.
+log-spout -d /var/log/ -f _TEMP_FILE_ -a
+```
+
+With `-g -d` and no `-f` (or `-f _TEMP_FILE_`), the generated command retains
+`-d` and uses `-f _TEMP_FILE_`. Each launch rescans the directory and creates
+a fresh random config such as `/tmp/log-spout-152451.json`, so clearing the
+temp directory between launches does not break the script. The temporary
+config is removed on normal process shutdown. `_TEMP_FILE_` requires `-d`.
+With an explicit config filename, scripts still load the saved config without
+rescanning. As with other `-g` commands, `-s` is added when neither `-s` nor
+`-a` was supplied. Other CLI overrides, such as `-e`, are applied to the
+generated config before it is printed or saved.
+
 ---
 
 ### Config overview
