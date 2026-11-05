@@ -38,7 +38,7 @@ public class LogSpoutMainTest
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         PrintStream terminal = new PrintStream(output);
         assertTrue(LogSpoutMain.awaitBrowserRequest(new BufferedReader(new StringReader("\n")), terminal));
-        assertEquals("[Press enter to open in browser]" + System.lineSeparator(),
+        assertEquals("\u001b[1;36m[Press enter to open in browser]\u001b[0m" + System.lineSeparator(),
             output.toString(StandardCharsets.UTF_8));
         assertTrue(LogSpoutMain.awaitBrowserRequest(new BufferedReader(new StringReader("\r\n")), terminal));
         assertTrue(LogSpoutMain.awaitBrowserRequest(new BufferedReader(new StringReader("other input\n\n")), terminal));

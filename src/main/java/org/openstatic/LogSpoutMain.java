@@ -803,7 +803,7 @@ public class LogSpoutMain
 
     static boolean awaitBrowserRequest(BufferedReader input, PrintStream output) throws IOException
     {
-        output.println("[Press enter to open in browser]");
+        output.println("\u001b[1;36m[Press enter to open in browser]\u001b[0m");
         output.flush();
         String line;
         while ((line = input.readLine()) != null)

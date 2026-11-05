@@ -13,7 +13,7 @@ WebSocket API so other instances (or browsers) can subscribe to them.
 Run `log-spout -?` for the full option list.
 
 With `-a` on a non-headless desktop that supports browser launching, the terminal
-shows `[Press enter to open in browser]` after the server starts. Press Enter to
+shows `[Press enter to open in browser]` in bold cyan (ANSI) after the server starts. Press Enter to
 open `http://127.0.0.1:<port>/` in your default browser (default port `8662`, or
 the port supplied to `-a`). Waiting for input does not block log streaming or
 the web server; headless environments do not show the prompt.
