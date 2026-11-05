@@ -184,6 +184,19 @@
                 </buildArgs>
             </configuration>
        </plugin>
+    </plugins>
+  </build>
+  <profiles>
+    <profile>
+      <id>linux</id>
+      <activation>
+        <os>
+          <family>unix</family>
+          <name>linux</name>
+        </os>
+      </activation>
+      <build>
+        <plugins>
         <plugin>
             <artifactId>jdeb</artifactId>
             <groupId>org.vafer</groupId>
@@ -322,6 +335,78 @@
                 </execution>
             </executions>
        </plugin>
-    </plugins>
-  </build>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>windows</id>
+      <activation>
+        <os>
+          <family>windows</family>
+        </os>
+      </activation>
+      <properties>
+        <windows.makeNSIS>C:\Program Files (x86)\NSIS\makensis.exe</windows.makeNSIS>
+        <skipWindowsInstaller>${skipNative}</skipWindowsInstaller>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.graalvm.buildtools</groupId>
+            <artifactId>native-maven-plugin</artifactId>
+            <configuration>
+              <buildArgs combine.children="append">
+                <buildArg>-H:NativeLinkerOption=${project.build.directory}/log-spout.res</buildArg>
+              </buildArgs>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <id>compile-windows-icon</id>
+                <phase>prepare-package</phase>
+                <goals><goal>exec</goal></goals>
+                <configuration>
+                  <skip>${skipNative}</skip>
+                  <executable>rc.exe</executable>
+                  <arguments>
+                    <argument>/nologo</argument>
+                    <argument>/I</argument>
+                    <argument>${project.basedir}/src/main/resources</argument>
+                    <argument>/fo</argument>
+                    <argument>${project.build.directory}/log-spout.res</argument>
+                    <argument>${project.basedir}/src/windows/log-spout.rc</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+              <execution>
+                <id>build-windows-installer</id>
+                <phase>package</phase>
+                <goals><goal>exec</goal></goals>
+                <configuration>
+                  <skip>${skipWindowsInstaller}</skip>
+                  <executable>powershell.exe</executable>
+                  <arguments>
+                    <argument>-NoProfile</argument>
+                    <argument>-NonInteractive</argument>
+                    <argument>-ExecutionPolicy</argument>
+                    <argument>Bypass</argument>
+                    <argument>-File</argument>
+                    <argument>${project.basedir}/src/windows/Build-Installer.ps1</argument>
+                    <argument>-Version</argument>
+                    <argument>${project.version}</argument>
+                    <argument>-MakeNSIS</argument>
+                    <argument>${windows.makeNSIS}</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

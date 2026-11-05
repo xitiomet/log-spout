@@ -149,6 +149,8 @@ public class TailLogConnectionTest
     @Test
     public void followsDescriptorRatherThanReplacementFile() throws Exception
     {
+        org.junit.Assume.assumeTrue("Requires renaming a file while its descriptor is open",
+            java.io.File.separatorChar == '/');
         write("original\n");
         connect(config());
         assertEquals("original", nextLine());

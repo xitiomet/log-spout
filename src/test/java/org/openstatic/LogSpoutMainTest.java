@@ -117,6 +117,36 @@ public class LogSpoutMainTest
     }
 
     @Test
+    public void reportsFoundLogsOnStderrWithoutContaminatingJson() throws Exception
+    {
+        Path directory = this.temporary.newFolder().toPath();
+        Path nested = Files.createDirectory(directory.resolve("nested"));
+        List<Path> logs = new ArrayList<Path>();
+        for (String name : Arrays.asList("app.log", "app.out", "app.err", "syslog", "dmesg", "messages"))
+            logs.add(Files.createFile(directory.resolve(name)));
+        logs.add(Files.createFile(nested.resolve("worker.log")));
+        Files.createFile(directory.resolve("ignored.txt"));
+        File errors = this.temporary.newFile();
+        Process process = startCli(errors, "-d", directory.toString());
+        try
+        {
+            assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+            String diagnostics = Files.readString(errors.toPath());
+            assertEquals(diagnostics, 0, process.exitValue());
+            JSONObject output = new JSONObject(new String(process.getInputStream().readAllBytes(),
+                StandardCharsets.UTF_8));
+            assertEquals(logs.size(), output.getJSONArray("_sources").length());
+            List<String> found = diagnostics.lines().filter(line -> line.startsWith("Found Log: ")).toList();
+            assertEquals(logs.size(), found.size());
+            for (Path log : logs)
+                assertTrue(found.contains("Found Log: " + log));
+            assertFalse(diagnostics.contains("ignored.txt"));
+        } finally {
+            stop(process);
+        }
+    }
+
+    @Test
     public void invalidDirectoryFailsWithoutOutput() throws Exception
     {
         File errors = this.temporary.newFile();
@@ -165,7 +195,8 @@ public class LogSpoutMainTest
         {
             StringBuilder output = new StringBuilder();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-            while (!output.toString().contains("directory-tail-started\n") && System.nanoTime() < deadline)
+            while (!normalizeLineEndings(output.toString()).contains("directory-tail-started\n")
+                && System.nanoTime() < deadline)
             {
                 int available = process.getInputStream().available();
                 if (available > 0)
@@ -175,7 +206,7 @@ public class LogSpoutMainTest
                 Thread.sleep(20);
             }
             assertTrue("No tail output: " + Files.readString(errors.toPath()),
-                output.toString().contains("directory-tail-started\n"));
+                normalizeLineEndings(output.toString()).contains("directory-tail-started\n"));
             JSONObject saved = new JSONObject(Files.readString(config));
             assertEquals(directory + "/", saved.getString("_name"));
             assertEquals("tail", saved.getJSONArray("_sources").getJSONObject(0).getString("_type"));
@@ -194,12 +225,17 @@ public class LogSpoutMainTest
         Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
         Process process = runCli("--directory=" + directory, "--generate=" + script);
         assertEquals(0, process.getInputStream().readAllBytes().length);
+        assertEquals(isWindows() ? "launch.cmd" : "launch.sh",
+            LogSpoutMain.launchScriptFile(script.toString()).getName());
+        script = LogSpoutMain.launchScriptFile(script.toString()).toPath();
         String contents = Files.readString(script);
         assertTrue(contents.contains(" -f _TEMP_FILE_"));
-        assertTrue(contents.contains(" -d '" + directory + "'"));
+        assertTrue(contents.contains(" -d "));
+        assertEquals(expectedScript("-d", directory.toString(), "-g", script.toString()), contents);
         assertFalse(contents.contains("-g "));
-        assertTrue(contents.endsWith(" -s\n"));
-        assertTrue(Files.isExecutable(script));
+        assertTrue(contents.endsWith(isWindows() ? " -s\r\n" : " -s\n"));
+        if (!isWindows())
+            assertTrue(Files.isExecutable(script));
     }
 
     @Test
@@ -208,43 +244,78 @@ public class LogSpoutMainTest
         Path directory = this.temporary.newFolder().toPath();
         Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
         runCli("-d", directory.toString(), "-f", "_TEMP_FILE_", "-g", script.toString());
-        assertEquals("#!/bin/bash\nlog-spout -d '" + directory + "' -f '_TEMP_FILE_' -s\n",
-            Files.readString(script));
+        assertEquals(expectedScript("-d", directory.toString(), "-f", "_TEMP_FILE_", "-g", script.toString()),
+            Files.readString(LogSpoutMain.launchScriptFile(script.toString()).toPath()));
         assertFalse(Files.exists(this.temporary.getRoot().toPath().resolve("_TEMP_FILE_")));
     }
 
     @Test
     public void generatedScriptRestartsAfterTemporaryConfigIsDeleted() throws Exception
     {
+        if (!isWindows())
+            assumePosixFileSystem();
+        verifyRestartsAfterTemporaryConfigIsDeleted(true);
+    }
+
+    @Test
+    public void temporaryConfigRestartsAfterPreviousConfigIsDeleted() throws Exception
+    {
+        verifyRestartsAfterTemporaryConfigIsDeleted(false);
+    }
+
+    private void verifyRestartsAfterTemporaryConfigIsDeleted(boolean runScript) throws Exception
+    {
         Path directory = this.temporary.newFolder("logs").toPath();
         Files.writeString(directory.resolve("app.log"), "first-launch\n");
         Path tempDirectory = this.temporary.newFolder("temp configs").toPath();
         Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
         runCli("-d", directory + "/", "-g", script.toString());
+        script = LogSpoutMain.launchScriptFile(script.toString()).toPath();
         Path executable = this.temporary.getRoot().toPath().resolve("log-spout");
         String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
-        Files.writeString(executable, "#!/bin/bash\nexec " + quote(java) + " "
-            + quote("-Djava.io.tmpdir=" + tempDirectory) + " -cp " + quote(classpath)
-            + " org.openstatic.LogSpoutMain \"$@\"\n");
-        assertTrue(executable.toFile().setExecutable(true));
+        if (runScript && !isWindows())
+        {
+            Files.writeString(executable, "#!/bin/bash\nexec " + quote(java) + " "
+                + quote("-Djava.io.tmpdir=" + tempDirectory) + " -cp " + quote(classpath)
+                + " org.openstatic.LogSpoutMain \"$@\"\n");
+            assertTrue(executable.toFile().setExecutable(true));
+        }
         Path previousConfig = null;
         for (String expectedLine : Arrays.asList("first-launch", "second-launch"))
         {
             if (previousConfig != null)
                 Files.writeString(directory.resolve("new.err"), "second-launch\n");
             File errors = this.temporary.newFile();
-            ProcessBuilder builder = new ProcessBuilder("bash", script.toString())
-                .directory(this.temporary.getRoot()).redirectError(errors);
-            builder.environment().put("PATH", this.temporary.getRoot() + File.pathSeparator
-                + builder.environment().get("PATH"));
+            ProcessBuilder builder;
+            if (runScript)
+            {
+                if (isWindows())
+                {
+                    String contents = Files.readString(script);
+                    Files.writeString(script, contents.replace("log-spout.exe", "\"" + java + "\" "
+                        + "\"-Djava.io.tmpdir=" + tempDirectory + "\" -cp \"" + classpath + "\" "
+                        + LogSpoutMain.class.getName()));
+                    builder = new ProcessBuilder("cmd.exe", "/d", "/c", script.getFileName().toString());
+                } else {
+                    builder = new ProcessBuilder("bash", script.toString());
+                    builder.environment().put("PATH", this.temporary.getRoot() + File.pathSeparator
+                        + builder.environment().get("PATH"));
+                }
+            } else {
+                builder = new ProcessBuilder(java, "-Djava.io.tmpdir=" + tempDirectory, "-cp",
+                    classpath, LogSpoutMain.class.getName(), "-d", directory + "/",
+                    "-f", "_TEMP_FILE_", "-s");
+            }
+            builder.directory(this.temporary.getRoot()).redirectError(errors);
             Process process = builder.start();
             Path config;
             try
             {
                 StringBuilder output = new StringBuilder();
                 long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-                while (!output.toString().contains(expectedLine + "\n") && System.nanoTime() < deadline)
+                while (!normalizeLineEndings(output.toString()).contains(expectedLine + "\n")
+                    && System.nanoTime() < deadline)
                 {
                     int available = process.getInputStream().available();
                     if (available > 0)
@@ -255,7 +326,7 @@ public class LogSpoutMainTest
                     Thread.sleep(20);
                 }
                 assertTrue("Missing tail output: " + Files.readString(errors.toPath()),
-                    output.toString().contains(expectedLine + "\n"));
+                    normalizeLineEndings(output.toString()).contains(expectedLine + "\n"));
                 try (java.util.stream.Stream<Path> configs = Files.list(tempDirectory))
                 {
                     List<Path> paths = configs.toList();
@@ -299,9 +370,10 @@ public class LogSpoutMainTest
         Path config = this.temporary.getRoot().toPath().resolve("saved config.json");
         Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
         runCli("-d", directory.toString(), "-f", config.toString(), "-g", script.toString(), "-a", "9876");
+        script = LogSpoutMain.launchScriptFile(script.toString()).toPath();
         String contents = Files.readString(script);
-        assertTrue(contents.contains(" -f '" + config + "'"));
-        assertTrue(contents.contains(" -a '9876'"));
+        assertEquals(expectedScript("-d", directory.toString(), "-f", config.toString(),
+            "-g", script.toString(), "-a", "9876"), contents);
         assertFalse(contents.contains(" -s"));
         assertFalse(contents.contains(" -d"));
         assertFalse(contents.contains(" -g"));
@@ -313,6 +385,7 @@ public class LogSpoutMainTest
     @Test
     public void existingScriptOptionsArePreservedAndShellQuoted() throws Exception
     {
+        assumePosixFileSystem();
         CommandLine cmd = new DefaultParser().parse(LogSpoutMain.commandLineOptions(),
             new String[] {"--config=log's config.json", "--generate=launch.sh",
                 "--expression", "(ERROR || WARN) && !DEBUG", "--api", "--password", "a $value"});
@@ -323,7 +396,58 @@ public class LogSpoutMainTest
         assertTrue(script.contains(" -p 'a $value'"));
         assertFalse(script.contains(" -s"));
         assertFalse(script.contains(" -g"));
+    }
 
+    @Test
+    public void windowsScriptPreservesArgumentsWhenExecuted() throws Exception
+    {
+        Assume.assumeTrue(isWindows());
+        String[] arguments = {"space here", "(ERROR || WARN) && !DEBUG", "%PATH%", "a^b&c|d<e>f",
+            "embedded\"quote", "C:\\logs with spaces\\", "", "apostrophe's", "quote\" & echo unexpected"};
+        String[] cli = new String[arguments.length + 2];
+        cli[0] = "-g";
+        cli[1] = "launch.sh";
+        System.arraycopy(arguments, 0, cli, 2, arguments.length);
+        String script = expectedScript(cli);
+        assertTrue(script.startsWith("@echo off\r\nsetlocal DisableDelayedExpansion\r\n"));
+        String java = Path.of(System.getProperty("java.home"), "bin", "java.exe").toString();
+        String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+        Path launch = this.temporary.getRoot().toPath().resolve("launch.cmd");
+        Files.writeString(launch, script.replace("log-spout.exe",
+            "\"" + java + "\" -cp \"" + classpath + "\" " + ArgumentPrinter.class.getName()));
+        Process process = new ProcessBuilder("cmd.exe", "/d", "/c", "launch.cmd")
+            .directory(this.temporary.getRoot()).redirectErrorStream(true).start();
+        try
+        {
+            assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            assertEquals(output, 0, process.exitValue());
+            JSONArray received = new JSONArray(output);
+            assertEquals(arguments.length + 1, received.length());
+            assertEquals("-s", received.getString(0));
+            for (int i = 0; i < arguments.length; i++)
+                assertEquals(arguments[i], received.getString(i + 1));
+        } finally {
+            stop(process);
+        }
+    }
+
+    public static class ArgumentPrinter
+    {
+        public static void main(String[] args)
+        {
+            System.out.println(new JSONArray(Arrays.asList(args)));
+        }
+    }
+
+    @Test
+    public void generatedScriptPreservesArgumentsWhenExecuted() throws Exception
+    {
+        assumePosixFileSystem();
+        CommandLine cmd = new DefaultParser().parse(LogSpoutMain.commandLineOptions(),
+            new String[] {"--config=log's config.json", "--generate=launch.sh",
+                "--expression", "(ERROR || WARN) && !DEBUG", "--api", "--password", "a $value"});
+        String script = LogSpoutMain.generateLaunchScript(cmd);
         Path executable = this.temporary.getRoot().toPath().resolve("log-spout");
         Files.writeString(executable, "#!/bin/bash\nprintf '%s\\n' \"$@\"\n");
         assertTrue(executable.toFile().setExecutable(true));
@@ -361,6 +485,27 @@ public class LogSpoutMainTest
     private String quote(String value)
     {
         return "'" + value.replace("'", "'\"'\"'") + "'";
+    }
+
+    private String expectedScript(String... args) throws Exception
+    {
+        return LogSpoutMain.generateLaunchScript(new DefaultParser().parse(LogSpoutMain.commandLineOptions(), args));
+    }
+
+    private static boolean isWindows()
+    {
+        return File.separatorChar == '\\';
+    }
+
+    private static String normalizeLineEndings(String output)
+    {
+        return output.replace("\r\n", "\n");
+    }
+
+    private void assumePosixFileSystem()
+    {
+        Assume.assumeTrue("Requires native POSIX paths and executable shell scripts",
+            File.separatorChar == '/' && Files.isExecutable(Path.of("/bin/bash")));
     }
 
     private Process startCli(File errors, String... args) throws Exception

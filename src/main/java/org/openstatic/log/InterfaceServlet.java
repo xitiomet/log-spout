@@ -33,7 +33,8 @@ public class InterfaceServlet extends HttpServlet
         //JavaKISSMain.logAppend("interface.log", "RES " + target);
         if ("/".equals(target))
             target = "/index.html";
-        target = "/logspout" + target;
+        if ("/favicon.ico".equals(target))
+            target = "/log-spout.ico";
         URL data = getClass().getResource(target);
         if (data != null)
         {

@@ -219,9 +219,9 @@ public class LogSpoutMain
 
             if (cmd.hasOption("g"))
             {
-                File filename = new File(cmd.getOptionValue("g"));
+                File filename = launchScriptFile(cmd.getOptionValue("g"));
                 Files.writeString(filename.toPath(), generateLaunchScript(cmd));
-                if (!filename.setExecutable(true))
+                if (!isWindows() && !filename.setExecutable(true))
                     throw new IOException("Cannot make script executable: " + filename);
                 System.err.println("Generated: " + filename);
                 return;
@@ -291,7 +291,7 @@ public class LogSpoutMain
         options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
-        options.addOption(new Option("g", "generate", true, "Generate a shell script to launch this log"));
+        options.addOption(new Option("g", "generate", true, "Generate a launch script (Windows: .cmd, POSIX: Bash)"));
         options.addOption(new Option("p", "password", true, "Set password to send to remote connection -c, or for local api -a"));
         options.addOption(new Option("l", "log", true, "Select which log to view"));
         options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
@@ -316,7 +316,10 @@ public class LogSpoutMain
                 if (Files.isRegularFile(path) && (name.endsWith(".log") || name.endsWith(".out")
                     || name.endsWith(".err") || name.equals("syslog") || name.equals("dmesg")
                     || name.equals("messages")))
+                {
                     files.add(path);
+                    System.err.println("Found Log: " + path);
+                }
                 return FileVisitResult.CONTINUE;
             }
 
@@ -343,7 +346,10 @@ public class LogSpoutMain
 
     static String generateLaunchScript(CommandLine cmd)
     {
-        StringBuilder command = new StringBuilder("#!/bin/bash\nlog-spout");
+        boolean windows = isWindows();
+        StringBuilder command = new StringBuilder(windows
+            ? "@echo off\r\nsetlocal DisableDelayedExpansion\r\nlog-spout.exe"
+            : "#!/bin/bash\nlog-spout");
         boolean temporaryConfig = cmd.hasOption("d")
             && (!cmd.hasOption("f") || "_TEMP_FILE_".equals(cmd.getOptionValue("f")));
         for (Option option : cmd.getOptions())
@@ -354,7 +360,7 @@ public class LogSpoutMain
             if (option.getValues() != null)
             {
                 for (String value : option.getValues())
-                    command.append(" ").append(shellQuote(value));
+                    command.append(" ").append(windows ? batchQuote(value) : shellQuote(value));
             }
         }
         if (cmd.hasOption("d") && !cmd.hasOption("f"))
@@ -362,8 +368,59 @@ public class LogSpoutMain
         if (!cmd.hasOption("s") && !cmd.hasOption("a"))
             command.append(" -s");
         for (String argument : cmd.getArgList())
-            command.append(" ").append(shellQuote(argument));
-        return command.append("\n").toString();
+            command.append(" ").append(windows ? batchQuote(argument) : shellQuote(argument));
+        return command.append(windows ? "\r\n" : "\n").toString();
+    }
+
+    static File launchScriptFile(String filename)
+    {
+        File file = new File(filename);
+        if (!isWindows())
+            return file;
+        String name = file.getName();
+        int extension = name.lastIndexOf('.');
+        if (extension > 0)
+            name = name.substring(0, extension);
+        return new File(file.getParentFile(), name + ".cmd");
+    }
+
+    private static boolean isWindows()
+    {
+        return File.separatorChar == '\\';
+    }
+
+    private static String batchQuote(String value)
+    {
+        if (value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0 || value.indexOf('\0') >= 0)
+            throw new IllegalArgumentException("Windows script arguments cannot contain line breaks or NUL");
+        StringBuilder quoted = new StringBuilder("\"");
+        int backslashes = 0;
+        for (char character : value.toCharArray())
+        {
+            if (character == '\\')
+            {
+                backslashes++;
+            } else {
+                quoted.append("\\".repeat(character == '"' ? backslashes * 2 + 1 : backslashes));
+                quoted.append(character);
+                backslashes = 0;
+            }
+        }
+        quoted.append("\\".repeat(backslashes * 2)).append('"');
+        StringBuilder escaped = new StringBuilder();
+        for (char character : quoted.toString().toCharArray())
+        {
+            if (character == '%')
+                escaped.append("%%");
+            else
+            {
+                // CMD escaping is separate from the Windows process argument quoting above.
+                if ("\"^&|<>()".indexOf(character) >= 0)
+                    escaped.append('^');
+                escaped.append(character);
+            }
+        }
+        return escaped.toString();
     }
 
     private static String shellQuote(String value)

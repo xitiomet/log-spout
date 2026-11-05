@@ -23,7 +23,8 @@ The generated root `_name` is the directory path exactly as supplied
 absolute `_file` path and only the filename as its `_name`. Sources are sorted by
 path; an empty directory produces an empty `_sources` array. Access-denied
 paths are skipped with a notice on stderr, allowing accessible directories
-to be scanned. Invalid directories and other I/O failures report an error
+to be scanned. Each matching file emits `Found Log: <absolute path>` on stderr,
+keeping stdout reserved for the generated JSON. Invalid directories and other I/O failures report an error
 instead of starting Log Spout.
 
 ```sh
@@ -52,6 +53,67 @@ With an explicit config filename, scripts still load the saved config without
 rescanning. As with other `-g` commands, `-s` is added when neither `-s` nor
 `-a` was supplied. Other CLI overrides, such as `-e`, are applied to the
 generated config before it is printed or saved.
+
+Generated launch scripts target Bash on POSIX systems and CMD on Windows.
+On Windows, `-g local.sh` (or `-g local`) creates `local.cmd`, using CRLF
+line endings and Windows argument escaping. For example:
+
+```cmd
+log-spout -d "C:\logs" -g local.cmd
+local.cmd
+```
+
+Both platforms test generated-script execution and temporary-config restarts;
+POSIX permissions, Bash quoting, and renaming open files are tested only
+on systems supporting those operations.
+
+### Windows installer
+
+The NSIS installer installs the x64 native `log-spout.exe`, the native-image
+DLLs, and the x64 Visual C++ runtime DLLs into `C:\Program Files\Log Spout`.
+It requires administrator privileges, adds the install directory to **system
+PATH**, and registers an uninstaller in Windows Installed Apps. It creates
+no Start Menu or desktop shortcuts. Open a new terminal after installation
+to use `log-spout`. Uninstall removes the PATH entry only if the installer
+added it, preserving a pre-existing entry.
+
+The automatically activated Maven `windows` profile compiles
+`src/main/resources/log-spout.ico` into a Win32 resource, links it into the
+native executable, and builds the NSIS installer after native-image finishes.
+Linux Debian packaging is isolated in the auto-activated `linux` profile.
+Use GraalVM, NSIS 3, and the Visual Studio x64 Native Tools command prompt:
+
+```powershell
+mvn package
+```
+
+NSIS defaults to `C:\Program Files (x86)\NSIS\makensis.exe`; override it with
+`-Dwindows.makeNSIS=...` if installed elsewhere. `-DskipNative=true` skips
+native-image, Windows icon compilation, and installer packaging.
+`-DskipWindowsInstaller=true` builds the native executable without packaging.
+To rebuild only the installer from an existing native executable:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File src\windows\Build-Installer.ps1 `
+  -MakeNSIS "C:\Program Files (x86)\NSIS\makensis.exe"
+```
+
+The script finds the x64 CRT directory through `VCToolsRedistDir`. If that
+environment variable is unavailable, pass `-VCRuntimeDirectory` with the
+Visual Studio redistributable directory containing `vcruntime140.dll`
+(for example, `...\VC\Redist\MSVC\<version>\x64\Microsoft.VC143.CRT`).
+Only redistribute the release runtime DLLs under their applicable license.
+All DLLs emitted alongside the native executable or under `target\natives`
+are included; conflicting DLL filenames fail packaging rather than silently
+selecting one. The installer is written to `target\log-spout-1.0-setup.exe`;
+use `-Version` to change its version label.
+
+The PATH helper preserves long PATH values and their registry value type.
+Its isolated tests do not modify system PATH:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File src\windows\Test-SystemPath.ps1
+```
 
 ---
 
