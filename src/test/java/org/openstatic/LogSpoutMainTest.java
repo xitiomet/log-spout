@@ -3,6 +3,11 @@ package org.openstatic;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +31,35 @@ public class LogSpoutMainTest
 {
     @Rule
     public TemporaryFolder temporary = new TemporaryFolder();
+
+    @Test
+    public void browserPromptWaitsForEnterAndHandlesEndOfInput() throws Exception
+    {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream terminal = new PrintStream(output);
+        assertTrue(LogSpoutMain.awaitBrowserRequest(new BufferedReader(new StringReader("\n")), terminal));
+        assertEquals("[Press enter to open in browser]" + System.lineSeparator(),
+            output.toString(StandardCharsets.UTF_8));
+        assertTrue(LogSpoutMain.awaitBrowserRequest(new BufferedReader(new StringReader("\r\n")), terminal));
+        assertTrue(LogSpoutMain.awaitBrowserRequest(new BufferedReader(new StringReader("other input\n\n")), terminal));
+        assertFalse(LogSpoutMain.awaitBrowserRequest(new BufferedReader(new StringReader("")), terminal));
+        assertFalse(LogSpoutMain.awaitBrowserRequest(new BufferedReader(new StringReader("not enter\n")), terminal));
+    }
+
+    @Test
+    public void browserPromptReportsInputFailures() throws Exception
+    {
+        BufferedReader input = new BufferedReader(new StringReader(""));
+        input.close();
+        assertThrows(IOException.class, () -> LogSpoutMain.awaitBrowserRequest(input, System.err));
+    }
+
+    @Test
+    public void browserAddressUsesLoopbackAndSelectedPort()
+    {
+        assertEquals("http://127.0.0.1:8662/", LogSpoutMain.localBrowserAddress(8662).toString());
+        assertEquals("http://127.0.0.1:9876/", LogSpoutMain.localBrowserAddress(9876).toString());
+    }
 
     @Test
     public void recursivelyDiscoversLogFilesInSortedOrder() throws Exception
@@ -163,6 +197,109 @@ public class LogSpoutMainTest
     }
 
     @Test
+    public void execCommandsGenerateRequestedProcessConfig() throws Exception
+    {
+        Process process = runCli("-n", "System", "-e", "journalctl -x -f",
+            "--exec", "tail -f /var/log/dmesg", "-x", "ERROR");
+        JSONObject config = new JSONObject(new String(process.getInputStream().readAllBytes(),
+            StandardCharsets.UTF_8));
+        assertEquals("System", config.getString("_name"));
+        assertEquals("ERROR", config.getString("_filter"));
+        JSONArray sources = config.getJSONArray("_sources");
+        assertEquals(2, sources.length());
+        assertEquals("journalctl -x -f", sources.getJSONObject(0).getString("_name"));
+        assertEquals("process", sources.getJSONObject(0).getString("_type"));
+        assertEquals("[\"journalctl\",\"-x\",\"-f\"]", sources.getJSONObject(0).getJSONArray("_execute").toString());
+        assertEquals("[\"tail\",\"-f\",\"/var/log/dmesg\"]",
+            sources.getJSONObject(1).getJSONArray("_execute").toString());
+    }
+
+    @Test
+    public void execCommandsCombineWithDirectoryAndFollowScriptSaveRules() throws Exception
+    {
+        Path directory = this.temporary.newFolder().toPath();
+        Files.createFile(directory.resolve("app.log"));
+        Path config = this.temporary.getRoot().toPath().resolve("combined.json");
+        Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
+        runCli("-d", directory.toString(), "-e", "echo hello", "-f", config.toString(),
+            "-g", script.toString(), "-n", "Combined");
+        JSONObject saved = new JSONObject(Files.readString(config));
+        assertEquals(2, saved.getJSONArray("_sources").length());
+        assertEquals("tail", saved.getJSONArray("_sources").getJSONObject(0).getString("_type"));
+        assertEquals("process", saved.getJSONArray("_sources").getJSONObject(1).getString("_type"));
+        assertEquals(expectedScript("-f", config.toString(), "-g", script.toString(), "-n", "Combined"),
+            Files.readString(LogSpoutMain.launchScriptFile(script.toString()).toPath()));
+
+        runCli("-e", "echo hello", "-g", script.toString());
+        Path defaultConfig = this.temporary.getRoot().toPath().resolve(".log-spout.json");
+        assertEquals("Processes", new JSONObject(Files.readString(defaultConfig)).getString("_name"));
+        assertEquals(expectedScript("-f", defaultConfig.toString(), "-g", script.toString()),
+            Files.readString(LogSpoutMain.launchScriptFile(script.toString()).toPath()));
+
+        runCli("-e", "echo hello", "-e", "echo goodbye", "-f", "_TEMP_FILE_", "-g", script.toString());
+        String generated = Files.readString(LogSpoutMain.launchScriptFile(script.toString()).toPath());
+        assertEquals(expectedScript("-e", "echo hello", "-e", "echo goodbye",
+            "-f", "_TEMP_FILE_", "-g", script.toString()), generated);
+        assertEquals(2, generated.split(" -e ", -1).length - 1);
+    }
+
+    @Test
+    public void execStdoutShortcutCreatesTempConfigAndRunsProcess() throws Exception
+    {
+        Path tempDirectory = this.temporary.newFolder().toPath();
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+        String command = quote(java) + " -cp " + quote(classpath) + " "
+            + ArgumentPrinter.class.getName() + " exec-started";
+        File errors = this.temporary.newFile();
+        Process process = new ProcessBuilder(java, "-Djava.io.tmpdir=" + tempDirectory, "-cp", classpath,
+            LogSpoutMain.class.getName(), "-e", command, "-n", "Running", "-s")
+            .directory(this.temporary.getRoot()).redirectError(errors).start();
+        try
+        {
+            StringBuilder output = new StringBuilder();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (!output.toString().contains("exec-started") && System.nanoTime() < deadline)
+            {
+                int available = process.getInputStream().available();
+                if (available > 0)
+                    output.append(new String(process.getInputStream().readNBytes(available), StandardCharsets.UTF_8));
+                Thread.sleep(20);
+            }
+            assertTrue(Files.readString(errors.toPath()), output.toString().contains("exec-started"));
+            try (java.util.stream.Stream<Path> files = Files.list(tempDirectory))
+            {
+                List<Path> configs = files.toList();
+                assertEquals(1, configs.size());
+                JSONObject saved = new JSONObject(Files.readString(configs.get(0)));
+                assertEquals("Running", saved.getString("_name"));
+                assertEquals("process", saved.getJSONArray("_sources").getJSONObject(0).getString("_type"));
+            }
+            assertFalse(Files.exists(this.temporary.getRoot().toPath().resolve(".log-spout.json")));
+        } finally {
+            stop(process);
+        }
+    }
+
+    @Test
+    public void commandSplittingPreservesQuotedArgumentsAndWindowsPaths()
+    {
+        assertEquals("[\"tool\",\"two words\",\"\",\"single quoted\",\"escaped space\",\"C:\\\\logs\\\\app.log\"]",
+            LogSpoutMain.splitCommand("tool \"two words\" \"\" 'single quoted' escaped\\ space C:\\logs\\app.log")
+                .toString());
+        for (String invalid : Arrays.asList("", "  ", "'' argument", "tool 'unclosed"))
+        {
+            try
+            {
+                LogSpoutMain.splitCommand(invalid);
+                fail("Accepted invalid command: " + invalid);
+            } catch (IllegalArgumentException expected) {
+                assertNotNull(expected.getMessage());
+            }
+        }
+    }
+
+    @Test
     public void emptyDirectoryProducesEmptySources() throws Exception
     {
         Path directory = this.temporary.newFolder().toPath();
@@ -213,7 +350,7 @@ public class LogSpoutMainTest
     {
         Path directory = this.temporary.newFolder().toPath();
         Files.createFile(directory.resolve("app.log"));
-        Process process = runCli("--directory", directory + "/", "-e", "ERROR");
+        Process process = runCli("--directory", directory + "/", "-x", "ERROR");
         JSONObject output = new JSONObject(new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
         assertEquals(directory + "/", output.getString("_name"));
         assertEquals(1, output.getJSONArray("_sources").length());
@@ -781,7 +918,7 @@ public class LogSpoutMainTest
                 "--expression", "(ERROR || WARN) && !DEBUG", "--api", "--password", "a $value"});
         String script = LogSpoutMain.generateLaunchScript(cmd);
         assertTrue(script.contains(" -f 'log'\"'\"'s config.json'"));
-        assertTrue(script.contains(" -e '(ERROR || WARN) && !DEBUG'"));
+        assertTrue(script.contains(" -x '(ERROR || WARN) && !DEBUG'"));
         assertTrue(script.contains(" -a"));
         assertTrue(script.contains(" -p 'a $value'"));
         assertFalse(script.contains(" -s"));
@@ -851,7 +988,7 @@ public class LogSpoutMainTest
         {
             assertTrue(process.waitFor(5, TimeUnit.SECONDS));
             assertEquals(0, process.exitValue());
-            assertEquals("-f\nlog's config.json\n-e\n(ERROR || WARN) && !DEBUG\n-a\n-p\na $value\n",
+            assertEquals("-f\nlog's config.json\n-x\n(ERROR || WARN) && !DEBUG\n-a\n-p\na $value\n",
                 new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
         } finally {
             stop(process);

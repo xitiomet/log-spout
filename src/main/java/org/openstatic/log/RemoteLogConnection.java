@@ -18,6 +18,7 @@ import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.eclipse.jetty.websocket.common.WebSocketSession;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.openstatic.LogSpoutMain;
 
 public class RemoteLogConnection implements LogConnection, Runnable
 {
@@ -31,11 +32,13 @@ public class RemoteLogConnection implements LogConnection, Runnable
     private boolean connected;
     private List<String> logs;
     private long createdAt;
+    private final boolean localNameSpecified;
 
     public RemoteLogConnection(JSONObject config)
     {
         this.createdAt = System.currentTimeMillis();
         this.config = config;
+        this.localNameSpecified = config.has("_name");
         this.listeners = new ArrayList<LogConnectionListener>();
         this.wsUrl = config.optString("_remote", "ws://127.0.0.1:8662") + "/logspout/";
         this.connected = false;
@@ -188,15 +191,19 @@ public class RemoteLogConnection implements LogConnection, Runnable
                     } else if (action.equals("authOk")) {
                         RemoteLogConnection.this.config.put("_termAuth", jo.optString("termAuth"));
                         RemoteLogConnection.this.logs = jo.getJSONArray("logs").toList().stream().map((obj) -> obj.toString()).collect(Collectors.toList());
+                        updateRemoteMetadata(jo);
                         JSONObject logSelection = new JSONObject();
-                        logSelection.put("log", RemoteLogConnection.this.config.optString("_select", RemoteLogConnection.this.logs.get(0)));
+                        logSelection.put("log", RemoteLogConnection.this.config.optString("_select",
+                            RemoteLogConnection.this.logs.isEmpty() ? getName() : RemoteLogConnection.this.logs.get(0)));
                         transmit(logSelection);
                         JSONObject filterSelection = new JSONObject();
                         filterSelection.put("filter", RemoteLogConnection.this.config.optString("_filter", ""));
                         transmit(filterSelection);
+                    } else if (action.equals("presets")) {
+                        updateRemoteMetadata(jo);
                     }
                 } else if (jo.has("name") && jo.has("hostname")) {
-                        RemoteLogConnection.this.config.put("_name", jo.optString("name"));
+                        updateRemoteMetadata(jo);
                         if (RemoteLogConnection.this.config.has("_remote_password"))
                         {
                             JSONObject authJsonObject = new JSONObject();
@@ -206,7 +213,20 @@ public class RemoteLogConnection implements LogConnection, Runnable
                         }
                 }
             } catch (Exception e) {
-                //e.printStackTrace(System.err);
+                e.printStackTrace(System.err);
+            }
+        }
+
+        private void updateRemoteMetadata(JSONObject message)
+        {
+            if (!RemoteLogConnection.this.localNameSpecified && message.has("name"))
+                RemoteLogConnection.this.config.put("_name", message.getString("name"));
+            if (RemoteLogConnection.this.config == LogSpoutMain.settings)
+            {
+                if (message.has("presets"))
+                    LogSpoutMain.setRemotePresets(RemoteLogConnection.this.config, message.getJSONArray("presets"));
+                if (LogSpoutMain.apiWebServer != null)
+                    LogSpoutMain.apiWebServer.broadcastPresets();
             }
         }
 

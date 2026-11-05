@@ -19,6 +19,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 
 import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
@@ -66,6 +67,11 @@ public class APIWebServer implements Runnable, LogConnectionListener
         }
         this.pingPongThread = new Thread(this);
         this.pingPongThread.start();
+    }
+
+    public int getLocalPort()
+    {
+        return ((ServerConnector) this.httpServer.getConnectors()[0]).getLocalPort();
     }
 
     public void replaceLogConnectionContainer(LogConnectionContainer lc)
@@ -261,6 +267,8 @@ public class APIWebServer implements Runnable, LogConnectionListener
         JSONObject jo = new JSONObject();
         jo.put("action", "presets");
         jo.put("presets", LogSpoutMain.getPresets());
+        jo.put("name", this.logConnections.getName());
+        jo.put("logs", getLogNames(this.logConnections));
         broadcastJSONObject(jo);
     }
 

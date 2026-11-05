@@ -12,11 +12,51 @@ WebSocket API so other instances (or browsers) can subscribe to them.
 
 Run `log-spout -?` for the full option list.
 
+With `-a` on a non-headless desktop that supports browser launching, the terminal
+shows `[Press enter to open in browser]` after the server starts. Press Enter to
+open `http://127.0.0.1:<port>/` in your default browser (default port `8662`, or
+the port supplied to `-a`). Waiting for input does not block log streaming or
+the web server; headless environments do not show the prompt.
+
+When connecting with `-c`, server presets are merged into the local preset list
+at runtime. Local presets win same-name conflicts; server presets and edits or
+deletions of shared-only presets are never saved into the local config.
+Server preset updates refresh this runtime list (and may replace runtime edits).
+If no local root `_name` is set, the server's name is used; config names and
+`-n` overrides take precedence. Connected local web clients receive refreshed
+names, logs, and presets as remote metadata arrives.
+
 Use `-n "My Logs"` or `--name "My Logs"` to override the root `_name`.
 With `-d`, the override is included in the printed or saved config, including
 temporary configs. With a loaded config, it changes the runtime name without
 rewriting the file. Generated scripts retain the override. Child log and
 directory names are unchanged.
+
+### Generate a config from process commands
+
+Use repeatable `-e` / `--exec` options to create process log connections:
+
+```sh
+log-spout -n System -e "journalctl -x -f" -e "tail -f /var/log/dmesg"
+```
+
+Each source's `_name` is the original command, `_type` is `process`, and
+`_execute` is the command split into arguments. Single and double quotes group
+arguments (including empty quoted arguments). Backslashes can escape quotes,
+backslashes, and unquoted whitespace; other backslashes are preserved, allowing
+Windows paths. Unclosed quotes and empty executable names are rejected.
+No shell is invoked: pipes, redirects, and variable expansion are not interpreted.
+Use an explicit shell command when shell functionality is needed.
+
+The root defaults to `Processes` unless `-n` is supplied. With `-d`, process
+sources are appended to the directory config and its root name is retained.
+Output rules match `-d`: JSON to stdout by default; save and start with `-f`;
+a temporary config and normal startup with `-s` or `-a` and no `-f`; and
+`.log-spout.json` plus overwrite confirmation with `-g` and no `-f`.
+Explicit `-f _TEMP_FILE_ -g` retains the commands in the generated script.
+
+**Filtering has moved from `-e` to `-x`; `--expression` is unchanged.**
+Existing scripts using `-e` for filters must be updated.
 
 ### Generate a config from a directory
 
@@ -96,7 +136,7 @@ temp directory between launches does not break the script. The temporary
 config is removed on normal process shutdown. `_TEMP_FILE_` requires `-d`.
 With an explicit config filename, scripts still load the saved config without
 rescanning. As with other `-g` commands, `-s` is added when neither `-s` nor
-`-a` was supplied. Other CLI overrides, such as `-e`, are applied to the
+`-a` was supplied. Other CLI overrides, such as `-x`, are applied to the
 generated config before it is printed or saved.
 
 Generated launch scripts target Bash on POSIX systems and CMD on Windows.
@@ -419,7 +459,7 @@ parentheses:
 ("timeout" || "refused") && "db-"
 ```
 
-You can also pass a filter on the command line with `-e`, which is equivalent
+You can also pass a filter on the command line with `-x` / `--expression`, which is equivalent
 to setting `_filter` on the root config, and it is inherited by every source
 in the tree.
 

@@ -8,8 +8,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.awt.AWTError;
+import java.awt.Desktop;
+import java.awt.GraphicsEnvironment;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.URI;
 import java.nio.file.FileSystemException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -43,6 +47,8 @@ public class LogSpoutMain
     public static JexlEngine jexl;
     public static boolean verbose = false;
     public static APIWebServer apiWebServer;
+    private static JSONObject remotePresetOwner;
+    private static JSONArray remotePresets = new JSONArray();
 
     public static synchronized String generateBigAlphaKey(int key_length)
     {
@@ -123,6 +129,7 @@ public class LogSpoutMain
         LogSpoutMain.configFile = null;
 
         boolean stdoutLogs = false;
+        boolean browserPrompt = false;
         try
         {
             final CommandLine cmd = parser.parse(options, args);
@@ -140,15 +147,25 @@ public class LogSpoutMain
                 LogSpoutMain.verbose = true;
             }
             boolean temporaryConfig = "_TEMP_FILE_".equals(cmd.getOptionValue("f"));
-            boolean automaticTemporaryConfig = cmd.hasOption("d") && !cmd.hasOption("f")
+            boolean generatedConfig = cmd.hasOption("d") || cmd.hasOption("e");
+            boolean automaticTemporaryConfig = generatedConfig && !cmd.hasOption("f")
                 && !cmd.hasOption("g") && (cmd.hasOption("s") || cmd.hasOption("a"));
-            boolean defaultDirectoryConfig = cmd.hasOption("d") && cmd.hasOption("g") && !cmd.hasOption("f");
+            boolean defaultDirectoryConfig = generatedConfig && cmd.hasOption("g") && !cmd.hasOption("f");
             boolean overwriteDefaultConfig = false;
-            if (temporaryConfig && !cmd.hasOption("d"))
-                throw new IllegalArgumentException("-f _TEMP_FILE_ requires -d / --directory");
-            if (cmd.hasOption("d"))
+            if (temporaryConfig && !generatedConfig)
+                throw new IllegalArgumentException("-f _TEMP_FILE_ requires -d / --directory or -e / --exec");
+            if (generatedConfig)
             {
-                LogSpoutMain.settings = generateDirectoryConfig(cmd.getOptionValue("d", "."));
+                LogSpoutMain.settings = cmd.hasOption("d")
+                    ? generateDirectoryConfig(cmd.getOptionValue("d", "."))
+                    : new JSONObject().put("_name", "Processes").put("_sources", new JSONArray());
+                if (cmd.hasOption("e"))
+                {
+                    for (String command : cmd.getOptionValues("e"))
+                        LogSpoutMain.settings.getJSONArray("_sources").put(new JSONObject()
+                            .put("_name", command).put("_type", "process")
+                            .put("_execute", splitCommand(command)));
+                }
                 if ((temporaryConfig || automaticTemporaryConfig) && !cmd.hasOption("g"))
                 {
                     LogSpoutMain.configFile = Files.createTempFile("log-spout-", ".json").toFile();
@@ -200,9 +217,9 @@ public class LogSpoutMain
                 LogSpoutMain.settings.put("_name", cmd.getOptionValue("n"));
             }
 
-            if (cmd.hasOption("e"))
+            if (cmd.hasOption("x"))
             {
-                LogSpoutMain.settings.put("_filter", cmd.getOptionValue("e"));
+                LogSpoutMain.settings.put("_filter", cmd.getOptionValue("x"));
             }
 
             if (cmd.hasOption("c"))
@@ -230,9 +247,10 @@ public class LogSpoutMain
             if (cmd.hasOption("a"))
             {
                 LogSpoutMain.settings.put("apiPort", Integer.valueOf(cmd.getOptionValue("a", "8662")));
+                browserPrompt = true;
             }
 
-            if (cmd.hasOption("d"))
+            if (generatedConfig)
             {
                 if (LogSpoutMain.configFile == null)
                 {
@@ -305,6 +323,8 @@ public class LogSpoutMain
                 }
             });
             showIPS();
+            if (browserPrompt && LogSpoutMain.apiWebServer.getLocalPort() > 0)
+                offerBrowser(LogSpoutMain.apiWebServer.getLocalPort());
         }
         while(lcc != null)
         {
@@ -319,13 +339,14 @@ public class LogSpoutMain
     {
         Options options = new Options();
         options.addOption(new Option("?", "help", false, "Shows help"));
-        options.addOption(new Option("f", "config", true, "Specify config file (use _TEMP_FILE_ with -d for a fresh temporary config)"));
+        options.addOption(new Option("f", "config", true, "Specify config file (use _TEMP_FILE_ with -d or -e for a fresh temporary config)"));
         Option directoryOption = new Option("d", "directory", true,
             "Generate a tail config by recursively scanning a directory (default: current directory)");
         directoryOption.setOptionalArg(true);
         options.addOption(directoryOption);
         options.addOption(new Option("n", "name", true, "Override the root config name"));
-        options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
+        options.addOption(new Option("e", "exec", true, "Add a process command to a generated config (repeatable)"));
+        options.addOption(new Option("x", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
         options.addOption(new Option("g", "generate", true, "Generate a launch script (Windows: .cmd, POSIX: Bash)"));
@@ -336,6 +357,51 @@ public class LogSpoutMain
         apiOption.setOptionalArg(true);
         options.addOption(apiOption);
         return options;
+    }
+
+    static JSONArray splitCommand(String command)
+    {
+        JSONArray arguments = new JSONArray();
+        StringBuilder argument = new StringBuilder();
+        char quote = 0;
+        boolean started = false;
+        for (int i = 0; i < command.length(); i++)
+        {
+            char character = command.charAt(i);
+            if (character == '\\' && quote != '\'' && i + 1 < command.length()
+                && (command.charAt(i + 1) == '\\' || command.charAt(i + 1) == '"'
+                    || (quote == 0 && (Character.isWhitespace(command.charAt(i + 1))
+                        || command.charAt(i + 1) == '\''))))
+            {
+                argument.append(command.charAt(++i));
+                started = true;
+            } else if (quote != 0) {
+                if (character == quote)
+                    quote = 0;
+                else
+                    argument.append(character);
+            } else if (character == '\'' || character == '"') {
+                quote = character;
+                started = true;
+            } else if (Character.isWhitespace(character)) {
+                if (started)
+                {
+                    arguments.put(argument.toString());
+                    argument.setLength(0);
+                    started = false;
+                }
+            } else {
+                argument.append(character);
+                started = true;
+            }
+        }
+        if (quote != 0)
+            throw new IllegalArgumentException("Unclosed quote in command: " + command);
+        if (started)
+            arguments.put(argument.toString());
+        if (arguments.isEmpty() || arguments.getString(0).isEmpty())
+            throw new IllegalArgumentException("A process command requires a non-empty executable");
+        return arguments;
     }
 
     static JSONObject generateDirectoryConfig(String directory) throws IOException
@@ -460,10 +526,12 @@ public class LogSpoutMain
         StringBuilder command = new StringBuilder(windows
             ? "@echo off\r\nsetlocal DisableDelayedExpansion\r\nlog-spout.exe"
             : "#!/bin/bash\nlog-spout");
-        boolean temporaryConfig = cmd.hasOption("d") && "_TEMP_FILE_".equals(cmd.getOptionValue("f"));
+        boolean generatedConfig = cmd.hasOption("d") || cmd.hasOption("e");
+        boolean temporaryConfig = generatedConfig && "_TEMP_FILE_".equals(cmd.getOptionValue("f"));
         for (Option option : cmd.getOptions())
         {
-            if (option.getOpt().equals("g") || (option.getOpt().equals("d") && !temporaryConfig))
+            if (option.getOpt().equals("g")
+                || ((option.getOpt().equals("d") || option.getOpt().equals("e")) && !temporaryConfig))
                 continue;
             command.append(" -").append(option.getOpt());
             if (option.getValues() != null)
@@ -474,7 +542,7 @@ public class LogSpoutMain
                 command.append(" ").append(windows ? batchQuote(".") : shellQuote("."));
             }
         }
-        if (cmd.hasOption("d") && !cmd.hasOption("f"))
+        if (generatedConfig && !cmd.hasOption("f"))
         {
             String file = Path.of(".log-spout.json").toAbsolutePath().toString();
             command.append(" -f ").append(windows ? batchQuote(file) : shellQuote(file));
@@ -603,13 +671,42 @@ public class LogSpoutMain
         }
     }
 
-    public static JSONArray getPresets()
+    public static synchronized void setRemotePresets(JSONObject owner, JSONArray presets)
     {
-        if (LogSpoutMain.settings != null && LogSpoutMain.settings.has("_presets"))
+        if (owner == LogSpoutMain.settings)
         {
-            return LogSpoutMain.settings.optJSONArray("_presets");
+            remotePresetOwner = owner;
+            remotePresets = new JSONArray(presets.toString());
         }
-        return new JSONArray();
+    }
+
+    public static synchronized JSONArray getPresets()
+    {
+        JSONArray result = new JSONArray();
+        JSONArray local = settings == null ? null : settings.optJSONArray("_presets");
+        if (local != null)
+            for (int i = 0; i < local.length(); i++)
+                result.put(new JSONObject(local.getJSONObject(i).toString()));
+        if (remotePresetOwner == settings)
+            for (int i = 0; i < remotePresets.length(); i++)
+            {
+                JSONObject preset = remotePresets.getJSONObject(i);
+                if (findPreset(result, preset.getString("name")) == null)
+                    result.put(new JSONObject(preset.toString()));
+            }
+        return result;
+    }
+
+    private static JSONObject findPreset(JSONArray presets, String name)
+    {
+        if (presets != null)
+            for (int i = 0; i < presets.length(); i++)
+            {
+                JSONObject preset = presets.optJSONObject(i);
+                if (preset != null && name.equals(preset.optString("name")))
+                    return preset;
+            }
+        return null;
     }
 
     public static synchronized boolean savePreset(String name, String log, String filter)
@@ -620,6 +717,13 @@ public class LogSpoutMain
         if (LogSpoutMain.settings == null)
             return false;
         JSONArray presets = LogSpoutMain.settings.optJSONArray("_presets");
+        JSONObject shared = remotePresetOwner == settings ? findPreset(remotePresets, name) : null;
+        if (shared != null && findPreset(presets, name) == null)
+        {
+            shared.put("log", log == null ? "" : log);
+            shared.put("filter", filter == null ? "" : filter);
+            return true;
+        }
         if (presets == null)
         {
             presets = new JSONArray();
@@ -653,6 +757,15 @@ public class LogSpoutMain
         if (name == null || LogSpoutMain.settings == null)
             return false;
         JSONArray presets = LogSpoutMain.settings.optJSONArray("_presets");
+        if (findPreset(presets, name) == null && remotePresetOwner == settings)
+        {
+            for (int i = 0; i < remotePresets.length(); i++)
+                if (name.equals(remotePresets.getJSONObject(i).optString("name")))
+                {
+                    remotePresets.remove(i);
+                    return true;
+                }
+        }
         if (presets == null)
             return false;
         boolean removed = false;
@@ -681,6 +794,49 @@ public class LogSpoutMain
            
         }
         return null;
+    }
+
+    static URI localBrowserAddress(int port)
+    {
+        return URI.create("http://127.0.0.1:" + port + "/");
+    }
+
+    static boolean awaitBrowserRequest(BufferedReader input, PrintStream output) throws IOException
+    {
+        output.println("[Press enter to open in browser]");
+        output.flush();
+        String line;
+        while ((line = input.readLine()) != null)
+        {
+            if (line.isEmpty())
+                return true;
+        }
+        return false;
+    }
+
+    private static void offerBrowser(int port)
+    {
+        try
+        {
+            if (GraphicsEnvironment.isHeadless() || !Desktop.isDesktopSupported())
+                return;
+            Desktop desktop = Desktop.getDesktop();
+            if (!desktop.isSupported(Desktop.Action.BROWSE))
+                return;
+            Thread browserThread = new Thread(() -> {
+                try
+                {
+                    if (awaitBrowserRequest(new BufferedReader(new InputStreamReader(System.in)), System.err))
+                        desktop.browse(localBrowserAddress(port));
+                } catch (IOException | UnsupportedOperationException | SecurityException e) {
+                    System.err.println("Unable to open browser: " + e.getMessage());
+                }
+            }, "browser-prompt");
+            browserThread.setDaemon(true);
+            browserThread.start();
+        } catch (AWTError | UnsupportedOperationException | SecurityException e) {
+            System.err.println("Unable to initialize browser support: " + e.getMessage());
+        }
     }
 
     public static String readStreamToString(InputStream is)

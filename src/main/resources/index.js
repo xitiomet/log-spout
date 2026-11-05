@@ -367,6 +367,16 @@ function setupWebsocket()
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'presets') {
                     populatePresets(jsonObject.presets);
+                    if (Array.isArray(jsonObject.logs))
+                    {
+                        var selector = document.getElementById('logs');
+                        var selectedLog = selector.value;
+                        selector.innerHTML = "";
+                        for (var logName of jsonObject.logs)
+                            selector.appendChild(new Option(logName, logName));
+                        if (jsonObject.logs.indexOf(selectedLog) != -1)
+                            selector.value = selectedLog;
+                    }
                     if (pendingPresetSelection != null)
                     {
                         if (getPresetByName(pendingPresetSelection) != null)
@@ -435,4 +445,3 @@ window.onload = function() {
     term.loadAddon(fitAddon);
     setupWebsocket();
 };
-
