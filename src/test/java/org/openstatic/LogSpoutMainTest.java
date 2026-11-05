@@ -147,6 +147,97 @@ public class LogSpoutMainTest
     }
 
     @Test
+    public void binaryDetectionHonorsThresholdAndSampleLimit() throws Exception
+    {
+        Path file = this.temporary.newFile("sample.log").toPath();
+        assertFalse(LogSpoutMain.isLikelyBinary(file));
+        Files.writeString(file, "\ttext\r\n\u001b[31m\u00e9\u4e16\u754c\u001b[0m", StandardCharsets.UTF_8);
+        assertFalse(LogSpoutMain.isLikelyBinary(file));
+
+        byte[] sample = new byte[100];
+        Arrays.fill(sample, (byte) 'a');
+        sample[99] = 0;
+        Files.write(file, sample);
+        assertTrue(LogSpoutMain.isLikelyBinary(file));
+        Arrays.fill(sample, (byte) 'a');
+        Arrays.fill(sample, 0, 10, (byte) 1);
+        Files.write(file, sample);
+        assertFalse("Exactly 10% is allowed", LogSpoutMain.isLikelyBinary(file));
+        sample[10] = 127;
+        Files.write(file, sample);
+        assertTrue("More than 10% is excluded", LogSpoutMain.isLikelyBinary(file));
+
+        sample = new byte[8193];
+        Arrays.fill(sample, (byte) 'a');
+        sample[8192] = 0;
+        Files.write(file, sample);
+        assertFalse("Only the first 8192 bytes are sampled", LogSpoutMain.isLikelyBinary(file));
+        sample[8191] = 0;
+        Files.write(file, sample);
+        assertTrue("The last sampled byte is inspected", LogSpoutMain.isLikelyBinary(file));
+    }
+
+    @Test
+    public void directoryScanExcludesBinaryCandidatesAndReportsThem() throws Exception
+    {
+        Path directory = this.temporary.newFolder().toPath();
+        Path text = Files.writeString(directory.resolve("text.log"), "readable\n");
+        Path empty = Files.createFile(directory.resolve("empty.out"));
+        Path unicode = Files.writeString(directory.resolve("unicode.err"), "\u00e9\u4e16\u754c\n");
+        List<Path> binary = new ArrayList<Path>();
+        for (String name : Arrays.asList("binary.log", "binary.err", "binary.out", "syslog", "dmesg", "messages"))
+            binary.add(Files.write(directory.resolve(name), new byte[] {1, 2, 3, 0, 127}));
+        File errors = this.temporary.newFile();
+        Process process = startCli(errors, "-d", directory.toString());
+        try
+        {
+            assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+            String diagnostics = Files.readString(errors.toPath());
+            assertEquals(diagnostics, 0, process.exitValue());
+            JSONObject output = new JSONObject(new String(process.getInputStream().readAllBytes(),
+                StandardCharsets.UTF_8));
+            JSONArray sources = output.getJSONArray("_sources");
+            assertEquals(3, sources.length());
+            List<String> included = new ArrayList<String>();
+            for (int i = 0; i < sources.length(); i++)
+                included.add(sources.getJSONObject(i).getString("_file"));
+            for (Path accepted : Arrays.asList(text, empty, unicode))
+            {
+                assertTrue(included.contains(accepted.toString()));
+                assertTrue(diagnostics.contains("Found Log: " + accepted));
+            }
+            for (Path excluded : binary)
+            {
+                assertFalse(included.contains(excluded.toString()));
+                assertTrue(diagnostics.contains("Skipping binary log: " + excluded));
+                assertFalse(diagnostics.contains("Found Log: " + excluded));
+            }
+        } finally {
+            stop(process);
+        }
+    }
+
+    @Test
+    public void skipsLogFilesThatCannotBeOpenedForSampling() throws Exception
+    {
+        Path directory = this.temporary.newFolder().toPath();
+        Assume.assumeTrue(Files.getFileStore(directory).supportsFileAttributeView("posix"));
+        Path denied = Files.writeString(directory.resolve("private.log"), "private\n");
+        Path accessible = Files.writeString(directory.resolve("public.log"), "public\n");
+        Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(denied);
+        try
+        {
+            Files.setPosixFilePermissions(denied, Set.of());
+            Assume.assumeFalse("Requires a user subject to file permissions", Files.isReadable(denied));
+            JSONObject config = LogSpoutMain.generateDirectoryConfig(directory.toString());
+            assertEquals(1, config.getJSONArray("_sources").length());
+            assertEquals(accessible.toString(), config.getJSONArray("_sources").getJSONObject(0).getString("_file"));
+        } finally {
+            Files.setPosixFilePermissions(denied, permissions);
+        }
+    }
+
+    @Test
     public void invalidDirectoryFailsWithoutOutput() throws Exception
     {
         File errors = this.temporary.newFile();
@@ -218,7 +309,7 @@ public class LogSpoutMainTest
     }
 
     @Test
-    public void directoryAndGenerateRescanUsingTemporaryConfig() throws Exception
+    public void directoryAndGenerateSaveDefaultConfig() throws Exception
     {
         Path directory = this.temporary.newFolder().toPath();
         Files.createFile(directory.resolve("app.err"));
@@ -229,13 +320,82 @@ public class LogSpoutMainTest
             LogSpoutMain.launchScriptFile(script.toString()).getName());
         script = LogSpoutMain.launchScriptFile(script.toString()).toPath();
         String contents = Files.readString(script);
-        assertTrue(contents.contains(" -f _TEMP_FILE_"));
-        assertTrue(contents.contains(" -d "));
-        assertEquals(expectedScript("-d", directory.toString(), "-g", script.toString()), contents);
+        Path config = this.temporary.getRoot().toPath().resolve(".log-spout.json");
+        assertTrue(Files.exists(config));
+        assertEquals(directory.toString(), new JSONObject(Files.readString(config)).getString("_name"));
+        assertEquals(expectedScript("-f", config.toString(), "-g", script.toString()), contents);
+        assertFalse(contents.contains(" -d "));
+        assertFalse(contents.contains("_TEMP_FILE_"));
         assertFalse(contents.contains("-g "));
         assertTrue(contents.endsWith(isWindows() ? " -s\r\n" : " -s\n"));
         if (!isWindows())
             assertTrue(Files.isExecutable(script));
+    }
+
+    @Test
+    public void bareDirectoryPrintsCurrentDirectoryConfig() throws Exception
+    {
+        Files.writeString(this.temporary.getRoot().toPath().resolve("app.log"), "hello\n");
+        Process process = runCli("-d");
+        JSONObject config = new JSONObject(new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
+        assertEquals(".", config.getString("_name"));
+        assertEquals(1, config.getJSONArray("_sources").length());
+        assertEquals(this.temporary.getRoot().toPath().resolve("app.log").toString(),
+            config.getJSONArray("_sources").getJSONObject(0).getString("_file"));
+    }
+
+    @Test
+    public void bareDirectoryAndGenerateSaveCurrentDirectoryConfig() throws Exception
+    {
+        Path config = this.temporary.getRoot().toPath().resolve(".log-spout.json");
+        Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
+        runCli("-d", "-g", script.toString());
+        assertEquals(".", new JSONObject(Files.readString(config)).getString("_name"));
+        assertEquals(expectedScript("-f", config.toString(), "-g", script.toString()),
+            Files.readString(LogSpoutMain.launchScriptFile(script.toString()).toPath()));
+    }
+
+    @Test
+    public void defaultConfigOverwriteRequiresExplicitConfirmation() throws Exception
+    {
+        Path config = this.temporary.getRoot().toPath().resolve(".log-spout.json");
+        Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
+        Path generatedScript = LogSpoutMain.launchScriptFile(script.toString()).toPath();
+        String original = "{\"_name\":\"keep me\"}";
+        for (String response : Arrays.asList("n\n", "", "yes\n"))
+        {
+            Files.writeString(config, original);
+            File errors = this.temporary.newFile();
+            Process process = startCli(errors, "-d", "-g", script.toString());
+            try
+            {
+                process.getOutputStream().write(response.getBytes(StandardCharsets.UTF_8));
+                process.getOutputStream().close();
+                assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+                assertEquals(Files.readString(errors.toPath()), 0, process.exitValue());
+                assertTrue(Files.readString(errors.toPath()).contains("Overwrite? [y/N]"));
+                assertEquals(0, process.getInputStream().readAllBytes().length);
+                if (response.equals("yes\n"))
+                {
+                    assertEquals(".", new JSONObject(Files.readString(config)).getString("_name"));
+                    assertTrue(Files.exists(generatedScript));
+                } else {
+                    assertEquals(original, Files.readString(config));
+                    assertFalse(Files.exists(generatedScript));
+                }
+            } finally {
+                stop(process);
+            }
+        }
+    }
+
+    @Test
+    public void bareDirectoryTemporaryScriptUsesExplicitCurrentDirectoryArgument() throws Exception
+    {
+        String script = expectedScript("-d", "-f", "_TEMP_FILE_", "-g", "launch");
+        assertTrue(script.contains(" -d "));
+        assertFalse(script.contains(" -d -f"));
+        assertTrue(script.contains("_TEMP_FILE_"));
     }
 
     @Test
@@ -269,7 +429,7 @@ public class LogSpoutMainTest
         Files.writeString(directory.resolve("app.log"), "first-launch\n");
         Path tempDirectory = this.temporary.newFolder("temp configs").toPath();
         Path script = this.temporary.getRoot().toPath().resolve("launch.sh");
-        runCli("-d", directory + "/", "-g", script.toString());
+        runCli("-d", directory + "/", "-f", "_TEMP_FILE_", "-g", script.toString());
         script = LogSpoutMain.launchScriptFile(script.toString()).toPath();
         Path executable = this.temporary.getRoot().toPath().resolve("log-spout");
         String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();

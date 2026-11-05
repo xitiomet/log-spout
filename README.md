@@ -18,14 +18,21 @@ Run `log-spout -?` for the full option list.
 `.out`, or `.err`, and files named exactly `syslog`, `dmesg`, or `messages`.
 Matching is case-sensitive; rotated/compressed files such as `syslog.1` and
 `access.log.gz` are excluded. Directory symlinks are not traversed.
+Each candidate's first 8 KiB is sampled: NUL bytes or more than 10% non-text
+control bytes mark it as likely binary and exclude it with
+`Skipping binary log: <absolute path>` on stderr. Tabs, CR/LF, ANSI escape
+bytes, and non-ASCII bytes are allowed; empty files remain eligible.
+This is a heuristic, not encoding validation: UTF-16 files containing NULs
+are excluded, and binary content beyond the sample may go undetected.
 The generated root `_name` is the directory path exactly as supplied
 (including a trailing slash), and each source uses `_type: "tail"` with an
 absolute `_file` path and only the filename as its `_name`. Sources are sorted by
 path; an empty directory produces an empty `_sources` array. Access-denied
 paths are skipped with a notice on stderr, allowing accessible directories
-to be scanned. Each matching file emits `Found Log: <absolute path>` on stderr,
-keeping stdout reserved for the generated JSON. Invalid directories and other I/O failures report an error
-instead of starting Log Spout.
+to be scanned, including files that cannot be opened for sampling. Each
+accepted file emits `Found Log: <absolute path>` on stderr, keeping stdout
+reserved for the generated JSON. Invalid directories and other I/O failures
+report an error instead of starting Log Spout.
 
 ```sh
 # Print JSON to stdout and exit (does not start the server or stream logs).
@@ -37,14 +44,27 @@ log-spout -d /var/log/ -f system-logs.json -a
 # Save the config and generate an executable launch script instead of starting.
 log-spout -d /var/log/ -f system-logs.json -g system-logs.sh -a
 
-# Generate a launch script that creates a fresh temporary config at each launch.
+# Save .log-spout.json in the current directory and generate a launch script.
 log-spout -d /var/log/ -g system-logs.sh
+
+# Scan the current directory (directory argument is optional).
+log-spout -d
+
+# Generate a launch script that creates a fresh temporary config at each launch.
+log-spout -d /var/log/ -f _TEMP_FILE_ -g system-logs.sh
 
 # Rescan, write a temporary config, and start without saving a permanent config.
 log-spout -d /var/log/ -f _TEMP_FILE_ -a
 ```
 
-With `-g -d` and no `-f` (or `-f _TEMP_FILE_`), the generated command retains
+With `-g -d` and no `-f`, the config is saved as `.log-spout.json` in the
+current working directory, and the script loads its absolute path without
+rescanning. If that config exists, a warning and `[y/N]` confirmation appear
+on stderr before overwriting. Only `y` or `yes` confirms; no or end-of-input
+cancels without changing the config or generating the script.
+Bare `-d` defaults to `.` (the current directory), including when used with `-g`.
+
+With `-g -d -f _TEMP_FILE_`, the generated command retains
 `-d` and uses `-f _TEMP_FILE_`. Each launch rescans the directory and creates
 a fresh random config such as `/tmp/log-spout-152451.json`, so clearing the
 temp directory between launches does not break the script. The temporary

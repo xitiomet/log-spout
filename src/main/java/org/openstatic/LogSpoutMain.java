@@ -1,6 +1,8 @@
 package org.openstatic;
 
 import java.io.File;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -13,6 +15,7 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -136,17 +139,35 @@ public class LogSpoutMain
                 LogSpoutMain.verbose = true;
             }
             boolean temporaryConfig = "_TEMP_FILE_".equals(cmd.getOptionValue("f"));
+            boolean defaultDirectoryConfig = cmd.hasOption("d") && cmd.hasOption("g") && !cmd.hasOption("f");
+            boolean overwriteDefaultConfig = false;
             if (temporaryConfig && !cmd.hasOption("d"))
                 throw new IllegalArgumentException("-f _TEMP_FILE_ requires -d / --directory");
             if (cmd.hasOption("d"))
             {
-                LogSpoutMain.settings = generateDirectoryConfig(cmd.getOptionValue("d"));
+                LogSpoutMain.settings = generateDirectoryConfig(cmd.getOptionValue("d", "."));
                 if (temporaryConfig && !cmd.hasOption("g"))
                 {
                     LogSpoutMain.configFile = Files.createTempFile("log-spout-", ".json").toFile();
                     LogSpoutMain.configFile.deleteOnExit();
                 } else if (cmd.hasOption("f") && !temporaryConfig) {
                     LogSpoutMain.configFile = new File(cmd.getOptionValue("f"));
+                } else if (defaultDirectoryConfig) {
+                    LogSpoutMain.configFile = new File("./.log-spout.json");
+                    if (LogSpoutMain.configFile.exists())
+                    {
+                        System.err.print("Warning: " + LogSpoutMain.configFile.getAbsolutePath()
+                            + " already exists. Overwrite? [y/N] ");
+                        System.err.flush();
+                        String answer = new BufferedReader(new InputStreamReader(System.in)).readLine();
+                        if (answer == null || !(answer.trim().equalsIgnoreCase("y")
+                            || answer.trim().equalsIgnoreCase("yes")))
+                        {
+                            System.err.println("Cancelled; existing config was not overwritten.");
+                            return;
+                        }
+                        overwriteDefaultConfig = true;
+                    }
                 }
             } else if (cmd.hasOption("f"))
             {
@@ -213,7 +234,11 @@ public class LogSpoutMain
                         return;
                     }
                 } else {
-                    Files.writeString(LogSpoutMain.configFile.toPath(), LogSpoutMain.settings.toString(2));
+                    if (defaultDirectoryConfig && !overwriteDefaultConfig)
+                        Files.writeString(LogSpoutMain.configFile.toPath(), LogSpoutMain.settings.toString(2),
+                            StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+                    else
+                        Files.writeString(LogSpoutMain.configFile.toPath(), LogSpoutMain.settings.toString(2));
                 }
             }
 
@@ -287,7 +312,10 @@ public class LogSpoutMain
         Options options = new Options();
         options.addOption(new Option("?", "help", false, "Shows help"));
         options.addOption(new Option("f", "config", true, "Specify config file (use _TEMP_FILE_ with -d for a fresh temporary config)"));
-        options.addOption(new Option("d", "directory", true, "Generate a tail config by recursively scanning a directory"));
+        Option directoryOption = new Option("d", "directory", true,
+            "Generate a tail config by recursively scanning a directory (default: current directory)");
+        directoryOption.setOptionalArg(true);
+        options.addOption(directoryOption);
         options.addOption(new Option("e", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
         options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
@@ -310,13 +338,23 @@ public class LogSpoutMain
         Files.walkFileTree(root, new SimpleFileVisitor<Path>()
         {
             @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attributes)
+            public FileVisitResult visitFile(Path path, BasicFileAttributes attributes) throws IOException
             {
                 String name = path.getFileName().toString();
                 if (Files.isRegularFile(path) && (name.endsWith(".log") || name.endsWith(".out")
                     || name.endsWith(".err") || name.equals("syslog") || name.equals("dmesg")
                     || name.equals("messages")))
                 {
+                    try
+                    {
+                        if (isLikelyBinary(path))
+                        {
+                            System.err.println("Skipping binary log: " + path);
+                            return FileVisitResult.CONTINUE;
+                        }
+                    } catch (AccessDeniedException error) {
+                        return visitFileFailed(path, error);
+                    }
                     files.add(path);
                     System.err.println("Found Log: " + path);
                 }
@@ -344,14 +382,33 @@ public class LogSpoutMain
         return new JSONObject().put("_name", directory).put("_sources", sources);
     }
 
+    static boolean isLikelyBinary(Path path) throws IOException
+    {
+        byte[] sample;
+        try (InputStream input = Files.newInputStream(path))
+        {
+            sample = input.readNBytes(8192);
+        }
+        int nonText = 0;
+        for (byte value : sample)
+        {
+            int character = value & 0xff;
+            if (character == 0)
+                return true;
+            if ((character < 32 && character != '\t' && character != '\n'
+                && character != '\r' && character != 27) || character == 127)
+                nonText++;
+        }
+        return nonText * 10 > sample.length;
+    }
+
     static String generateLaunchScript(CommandLine cmd)
     {
         boolean windows = isWindows();
         StringBuilder command = new StringBuilder(windows
             ? "@echo off\r\nsetlocal DisableDelayedExpansion\r\nlog-spout.exe"
             : "#!/bin/bash\nlog-spout");
-        boolean temporaryConfig = cmd.hasOption("d")
-            && (!cmd.hasOption("f") || "_TEMP_FILE_".equals(cmd.getOptionValue("f")));
+        boolean temporaryConfig = cmd.hasOption("d") && "_TEMP_FILE_".equals(cmd.getOptionValue("f"));
         for (Option option : cmd.getOptions())
         {
             if (option.getOpt().equals("g") || (option.getOpt().equals("d") && !temporaryConfig))
@@ -361,10 +418,15 @@ public class LogSpoutMain
             {
                 for (String value : option.getValues())
                     command.append(" ").append(windows ? batchQuote(value) : shellQuote(value));
+            } else if (option.getOpt().equals("d")) {
+                command.append(" ").append(windows ? batchQuote(".") : shellQuote("."));
             }
         }
         if (cmd.hasOption("d") && !cmd.hasOption("f"))
-            command.append(" -f _TEMP_FILE_");
+        {
+            String file = Path.of(".log-spout.json").toAbsolutePath().toString();
+            command.append(" -f ").append(windows ? batchQuote(file) : shellQuote(file));
+        }
         if (!cmd.hasOption("s") && !cmd.hasOption("a"))
             command.append(" -s");
         for (String argument : cmd.getArgList())
