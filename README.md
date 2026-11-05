@@ -329,7 +329,7 @@ are reported through the usual disconnect-error callbacks.
 | `_name`       | Display name (supports `$(var)`). |
 | `_unescape`   | Decode `\xNN` and Java-style escapes (default `true`). |
 | `_fixescape`  | Decode `#033[` terminal escapes (default `true`). |
-| `_urldecode`  | URL-decode each line (default `false`). |
+| `_urldecode`  | URL-decode each line (default `false`). Malformed encoding is preserved; diagnostics appear only with `-v`. |
 | `_highlight`  | Same substring-based ANSI highlighting as `process`. |
 
 ```json
@@ -357,7 +357,7 @@ log source.
 | `_execute`    | **Required.** Array of command + args. `$(var)` substitutions are expanded.  |
 | `_name`       | Display name (also supports `$(var)`).                                       |
 | `_unescape`   | Decode `\xNN` and Java-style escapes in each line (default `true`).          |
-| `_urldecode`  | URL-decode each line (default `false`).                                      |
+| `_urldecode`  | URL-decode each line (default `false`). Malformed encoding is preserved; diagnostics appear only with `-v`. |
 | `_highlight`  | `{ "substring": "\u001b[...m" }` — inject an ANSI color prefix when a line contains the substring; a reset is appended. |
 
 ```json

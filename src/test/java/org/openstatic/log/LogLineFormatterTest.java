@@ -2,7 +2,10 @@ package org.openstatic.log;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
@@ -12,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.openstatic.LogSpoutMain;
 
 public class LogLineFormatterTest
 {
@@ -25,8 +29,24 @@ public class LogLineFormatterTest
     @Test
     public void leavesMalformedUrlEncodingReadable()
     {
-        assertEquals("invalid%zz", LogLineFormatter.format("invalid%zz",
-            new JSONObject().put("_urldecode", true)));
+        PrintStream previousError = System.err;
+        boolean previousVerbose = LogSpoutMain.verbose;
+        ByteArrayOutputStream errors = new ByteArrayOutputStream();
+        try (PrintStream captured = new PrintStream(errors))
+        {
+            System.setErr(captured);
+            LogSpoutMain.verbose = false;
+            JSONObject config = new JSONObject().put("_urldecode", true);
+            for (String line : new String[] {"invalid%zz", "invalid%", "invalid%\"", "invalid%\u200e"})
+                assertEquals(line, LogLineFormatter.format(line, config));
+            assertEquals("", errors.toString());
+            LogSpoutMain.verbose = true;
+            assertEquals("invalid%zz", LogLineFormatter.format("invalid%zz", config));
+            assertTrue(errors.toString().contains("Unable to URL-decode log line:"));
+        } finally {
+            System.setErr(previousError);
+            LogSpoutMain.verbose = previousVerbose;
+        }
     }
 
     @Test

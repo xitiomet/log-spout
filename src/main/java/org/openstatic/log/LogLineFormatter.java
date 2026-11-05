@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.text.StringEscapeUtils;
 import org.json.JSONObject;
+import org.openstatic.LogSpoutMain;
 
 final class LogLineFormatter
 {
@@ -29,7 +30,8 @@ final class LogLineFormatter
             if (config.optBoolean("_urldecode", false))
                 line = URLDecoder.decode(line, StandardCharsets.UTF_8);
         } catch (IllegalArgumentException e) {
-            System.err.println("Unable to URL-decode log line: " + e.getMessage());
+            if (LogSpoutMain.verbose)
+                System.err.println("Unable to URL-decode log line: " + e.getMessage());
         }
         String prefix = "";
         String suffix = "";
