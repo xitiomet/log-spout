@@ -818,17 +818,41 @@ public class LogSpoutMain
     {
         try
         {
-            if (GraphicsEnvironment.isHeadless() || !Desktop.isDesktopSupported())
-                return;
-            Desktop desktop = Desktop.getDesktop();
-            if (!desktop.isSupported(Desktop.Action.BROWSE))
-                return;
+            boolean nativeImage = "runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode"));
+            if (nativeImage)
+            {
+                if (Boolean.getBoolean("java.awt.headless") || (!isWindows()
+                    && !System.getProperty("os.name").startsWith("Mac")
+                    && System.getenv("DISPLAY") == null && System.getenv("WAYLAND_DISPLAY") == null))
+                    return;
+            } else {
+                if (GraphicsEnvironment.isHeadless() || !Desktop.isDesktopSupported()
+                    || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE))
+                    return;
+            }
             Thread browserThread = new Thread(() -> {
                 try
                 {
                     if (awaitBrowserRequest(new BufferedReader(new InputStreamReader(System.in)), System.err))
-                        desktop.browse(localBrowserAddress(port));
-                } catch (IOException | UnsupportedOperationException | SecurityException e) {
+                    {
+                        URI address = localBrowserAddress(port);
+                        if (nativeImage)
+                        {
+                            Process launcher = new ProcessBuilder(nativeBrowserCommand(
+                                System.getProperty("os.name"), address))
+                                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                                .redirectError(ProcessBuilder.Redirect.INHERIT).start();
+                            int status = launcher.waitFor();
+                            if (status != 0)
+                                throw new IOException("Browser launcher exited with status " + status);
+                        } else {
+                            Desktop.getDesktop().browse(address);
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    System.err.println("Browser launch interrupted.");
+                } catch (IOException | AWTError | UnsupportedOperationException | SecurityException e) {
                     System.err.println("Unable to open browser: " + e.getMessage());
                 }
             }, "browser-prompt");
@@ -837,6 +861,15 @@ public class LogSpoutMain
         } catch (AWTError | UnsupportedOperationException | SecurityException e) {
             System.err.println("Unable to initialize browser support: " + e.getMessage());
         }
+    }
+
+    static String[] nativeBrowserCommand(String osName, URI address)
+    {
+        if (osName.startsWith("Windows"))
+            return new String[] {"rundll32", "url.dll,FileProtocolHandler", address.toString()};
+        if (osName.startsWith("Mac"))
+            return new String[] {"open", address.toString()};
+        return new String[] {"xdg-open", address.toString()};
     }
 
     public static String readStreamToString(InputStream is)

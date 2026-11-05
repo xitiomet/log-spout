@@ -59,6 +59,12 @@ public class LogSpoutMainTest
     {
         assertEquals("http://127.0.0.1:8662/", LogSpoutMain.localBrowserAddress(8662).toString());
         assertEquals("http://127.0.0.1:9876/", LogSpoutMain.localBrowserAddress(9876).toString());
+        assertArrayEquals(new String[] {"rundll32", "url.dll,FileProtocolHandler", "http://127.0.0.1:9876/"},
+            LogSpoutMain.nativeBrowserCommand("Windows 11", LogSpoutMain.localBrowserAddress(9876)));
+        assertArrayEquals(new String[] {"open", "http://127.0.0.1:9876/"},
+            LogSpoutMain.nativeBrowserCommand("Mac OS X", LogSpoutMain.localBrowserAddress(9876)));
+        assertArrayEquals(new String[] {"xdg-open", "http://127.0.0.1:9876/"},
+            LogSpoutMain.nativeBrowserCommand("Linux", LogSpoutMain.localBrowserAddress(9876)));
     }
 
     @Test

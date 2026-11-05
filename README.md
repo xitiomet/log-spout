@@ -17,6 +17,8 @@ shows `[Press enter to open in browser]` after the server starts. Press Enter to
 open `http://127.0.0.1:<port>/` in your default browser (default port `8662`, or
 the port supplied to `-a`). Waiting for input does not block log streaming or
 the web server; headless environments do not show the prompt.
+JVM runs use Java's `Desktop.browse`; native executables use the platform browser
+launcher (`rundll32` on Windows, `open` on macOS, or `xdg-open` on Linux).
 
 When connecting with `-c`, server presets are merged into the local preset list
 at runtime. Local presets win same-name conflicts; server presets and edits or
