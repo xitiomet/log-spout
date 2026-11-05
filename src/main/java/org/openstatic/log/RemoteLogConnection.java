@@ -5,6 +5,9 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.eclipse.jetty.websocket.api.Session;
@@ -26,9 +29,13 @@ public class RemoteLogConnection implements LogConnection, Runnable
     private JSONObject config;
     private WebSocketClient webSocketClient;
     private WebSocketSession session;
-    private EventsWebSocket socket;
+    private volatile EventsWebSocket socket;
     private Thread keepAliveThread;
-    private String wsUrl;
+    private static final long CONNECT_TIMEOUT_SECONDS = 10;
+    private static final Pattern URL_SCHEME = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*://.*");
+    private final String remoteAddress;
+    private final List<String> candidateUrls;
+    private volatile String resolvedUrl;
     private boolean connected;
     private List<String> logs;
     private long createdAt;
@@ -40,10 +47,10 @@ public class RemoteLogConnection implements LogConnection, Runnable
         this.config = config;
         this.localNameSpecified = config.has("_name");
         this.listeners = new ArrayList<LogConnectionListener>();
-        this.wsUrl = config.optString("_remote", "ws://127.0.0.1:8662") + "/logspout/";
+        this.remoteAddress = config.optString("_remote", "ws://127.0.0.1:8662");
+        this.candidateUrls = candidateUrls(this.remoteAddress);
         this.connected = false;
         this.logs = new ArrayList<String>();
-        //System.err.println("Remote Connection: " + this.wsUrl);
     }
 
     @Override
@@ -64,18 +71,68 @@ public class RemoteLogConnection implements LogConnection, Runnable
     public void connect() 
     {
         this.connected = true;
-        if (this.wsUrl != null && this.webSocketClient != null)
+        if (this.webSocketClient != null)
+            this.launchKeepAliveThread();
+    }
+
+    /**
+     * Builds the ordered list of WebSocket URLs to try for a remote address.
+     * Addresses without a scheme try wss:// then ws://; each is tried as given
+     * and then with the /logspout/ endpoint appended.
+     */
+    public static List<String> candidateUrls(String remote)
+    {
+        String address = remote == null ? "" : remote.trim();
+        List<String> urls = new ArrayList<String>();
+        if (URL_SCHEME.matcher(address).matches())
         {
+            addCandidates(urls, address);
+        } else {
+            addCandidates(urls, "wss://" + address);
+            addCandidates(urls, "ws://" + address);
+        }
+        return urls;
+    }
+
+    private static void addCandidates(List<String> urls, String url)
+    {
+        int authorityStart = url.indexOf("://") + 3;
+        int pathStart = url.indexOf('/', authorityStart);
+        String base = pathStart < 0 ? url : url.substring(0, pathStart);
+        String path = pathStart < 0 ? "/" : url.substring(pathStart);
+        urls.add(base + path);
+        if (!path.matches(".*/logspout/?"))
+            urls.add(base + (path.endsWith("/") ? path : path + "/") + "logspout/");
+    }
+
+    private void openSession()
+    {
+        List<String> urls = this.resolvedUrl != null ? List.of(this.resolvedUrl) : this.candidateUrls;
+        for (String url : urls)
+        {
+            if (!this.connected)
+                return;
+            EventsWebSocket attempt = new EventsWebSocket();
+            this.socket = attempt;
+            Future<Session> future = null;
             try
             {
-                URI echoUri = new URI(this.wsUrl);
-                ClientUpgradeRequest request = new ClientUpgradeRequest();
-                this.socket = new EventsWebSocket();
-                this.launchKeepAliveThread();
-                this.webSocketClient.connect(socket, echoUri, request);
-                //System.out.printf("Connecting to : %s%n", echoUri);
+                future = this.webSocketClient.connect(attempt, new URI(url), new ClientUpgradeRequest());
+                future.get(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                if (this.resolvedUrl == null)
+                {
+                    if (url.regionMatches(true, 0, "ws://", 0, 5))
+                        System.err.println("\u001b[1;31m[INSECURE CONNECTION]\u001b[0m " + url);
+                    else if (LogSpoutMain.verbose)
+                        System.err.println("Connected to remote: " + url);
+                }
+                this.resolvedUrl = url;
+                return;
             } catch (Exception e) {
-                //e.printStackTrace(System.err);
+                if (future != null)
+                    future.cancel(true);
+                if (LogSpoutMain.verbose)
+                    System.err.println("Remote connection failed: " + url + " (" + e + ")");
             }
         }
     }
@@ -116,7 +173,7 @@ public class RemoteLogConnection implements LogConnection, Runnable
     @Override
     public String getName()
     {
-        return LogConnectionParser.replaceVariables(this.config.optString("_name", this.wsUrl), config);
+        return LogConnectionParser.replaceVariables(this.config.optString("_name", this.remoteAddress), config);
     }
 
     @Override
@@ -226,7 +283,10 @@ public class RemoteLogConnection implements LogConnection, Runnable
                 if (message.has("presets"))
                     LogSpoutMain.setRemotePresets(RemoteLogConnection.this.config, message.getJSONArray("presets"));
                 if (LogSpoutMain.apiWebServer != null)
+                {
                     LogSpoutMain.apiWebServer.broadcastPresets();
+                    LogSpoutMain.apiWebServer.broadcastNameToUnauthenticated();
+                }
             }
         }
 
@@ -234,6 +294,12 @@ public class RemoteLogConnection implements LogConnection, Runnable
         public void onConnect(Session session) throws IOException 
         {
             // System.err.println("Connected websocket");
+            if (RemoteLogConnection.this.socket != this)
+            {
+                // A stale attempt (e.g. one that timed out) connected late.
+                session.close();
+                return;
+            }
             if (session instanceof WebSocketSession) {
                 RemoteLogConnection.this.session = (WebSocketSession) session;
             } else {
@@ -244,6 +310,8 @@ public class RemoteLogConnection implements LogConnection, Runnable
         @OnWebSocketClose
         public void onClose(Session session, int status, String reason) {
             // System.err.println("Close websocket");
+            if (RemoteLogConnection.this.socket != this)
+                return;
             RemoteLogConnection.this.close();
             RemoteLogConnection.this.session = null;
         }
@@ -252,6 +320,8 @@ public class RemoteLogConnection implements LogConnection, Runnable
         public void onError(Throwable e) 
         {
             //e.printStackTrace(System.err);
+            if (RemoteLogConnection.this.socket != this)
+                return;
             RemoteLogConnection.this.close();
             RemoteLogConnection.this.session = null;
         }
@@ -264,14 +334,14 @@ public class RemoteLogConnection implements LogConnection, Runnable
         {
             try
             {
-                Thread.sleep(10000);
                 if (!this.isReallyConnected())
                 {
                     //System.err.println("RemoteLogConnection - No connection detected by keep alive reconnecting...");
                     this.close();
                     this.session = null;
-                    this.connect();
+                    this.openSession();
                 }
+                Thread.sleep(10000);
             } catch (Exception e) {
                 //e.printStackTrace();
             }

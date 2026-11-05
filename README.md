@@ -8,7 +8,15 @@ WebSocket API so other instances (or browsers) can subscribe to them.
 - Load config: `log-spout -f my-config.json`
 - Turn on the web/API on port 8662: `log-spout -f my-config.json -a`
 - Pipe combined output to stdout: `log-spout -f my-config.json -s`
-- Connect to another Log Spout server as a remote client: `log-spout -c ws://host:8662 -p secret -s`
+- Connect to another Log Spout server as a remote client: `log-spout -c host:8662 secret -s`
+
+`-c` / `--connect` takes the server address and an optional remote password
+(`-p` / `--password` only sets the local `-a` API password). A bare address such
+as `oscar.parlor.me` tries `wss://oscar.parlor.me/`, `wss://oscar.parlor.me/logspout/`,
+`ws://oscar.parlor.me/`, then `ws://oscar.parlor.me/logspout/`. An address with a
+scheme (e.g. `wss://oscar.parlor.me`) is tried as given, then with `/logspout/`
+appended. The first URL that connects is reused for reconnects. Unencrypted
+`ws://` connections print a red `[INSECURE CONNECTION]` warning on stderr.
 
 Run `log-spout -?` for the full option list.
 
@@ -379,7 +387,7 @@ its logs. Useful for aggregating logs from many machines into one place.
 
 | Key                 | Purpose                                                                 |
 | ------------------- | ----------------------------------------------------------------------- |
-| `_remote`           | **Required.** WebSocket URL of the remote server, e.g. `ws://host:8662`. Log Spout appends `/logspout/` automatically. |
+| `_remote`           | **Required.** Remote server address, e.g. `ws://host:8662` or just `host:8662`. Without a scheme, `wss://` is tried before `ws://`; each URL is tried as given and then with `/logspout/` appended. |
 | `_remote_password`  | Sent as `apiPassword` when authenticating with the remote.              |
 | `_select`           | Ask the remote to send only this named sub-log.                         |
 | `_filter`           | JEXL filter forwarded to the remote so filtering happens upstream.      |
@@ -396,7 +404,7 @@ its logs. Useful for aggregating logs from many machines into one place.
 
 Note: setting `_remote` at the **root** of the config is a shortcut — Log
 Spout will build a single `RemoteLogConnection` for you without you having to
-wrap it in `_sources`. That's the mode used by `log-spout -c ws://host:8662`.
+wrap it in `_sources`. That's the mode used by `log-spout -c host:8662 [password]`.
 
 #### `forEachLine`
 
@@ -514,4 +522,4 @@ in the tree.
 
 Launch with `log-spout -f prod.json -a` and browse to `http://<host>:8662/`
 (password: `changeme`) to view / filter the combined stream, or connect
-another Log Spout to it with `log-spout -c ws://<host>:8662 -p changeme -s`.
+another Log Spout to it with `log-spout -c <host>:8662 changeme -s`.

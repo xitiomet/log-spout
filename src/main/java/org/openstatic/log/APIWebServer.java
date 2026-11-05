@@ -272,6 +272,26 @@ public class APIWebServer implements Runnable, LogConnectionListener
         broadcastJSONObject(jo);
     }
 
+    // Login-screen clients only receive the public greeting, so refresh it when the name changes.
+    public void broadcastNameToUnauthenticated()
+    {
+        JSONObject jo = new JSONObject();
+        jo.put("hostname", LogSpoutMain.settings.optString("hostname", "LOGSPOUT"));
+        jo.put("name", this.logConnections.getName());
+        String message = jo.toString();
+        for (Session s : ((ArrayList<WebSocketSession>) this.wsSessions.clone()))
+        {
+            try
+            {
+                JSONObject sessionProps = this.sessionProps.get(s);
+                if (sessionProps != null && !sessionProps.optBoolean("auth", false))
+                    s.getRemote().sendStringByFuture(message);
+            } catch (Exception e) {
+                e.printStackTrace(System.err);
+            }
+        }
+    }
+
     public static void sendPresetError(WebSocketSession session, String error)
     {
         JSONObject jo = new JSONObject();

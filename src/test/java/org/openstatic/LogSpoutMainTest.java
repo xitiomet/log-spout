@@ -932,6 +932,22 @@ public class LogSpoutMainTest
     }
 
     @Test
+    public void connectAcceptsOptionalPasswordSeparateFromApiPassword() throws Exception
+    {
+        CommandLine cmd = new DefaultParser().parse(LogSpoutMain.commandLineOptions(),
+            new String[] {"-c", "oscar.parlor.me", "remote secret", "-a", "-p", "local", "-s"});
+        assertArrayEquals(new String[] {"oscar.parlor.me", "remote secret"}, cmd.getOptionValues("c"));
+        assertEquals("local", cmd.getOptionValue("p"));
+        assertTrue(cmd.hasOption("s"));
+        cmd = new DefaultParser().parse(LogSpoutMain.commandLineOptions(), new String[] {"-c", "host", "-s"});
+        assertArrayEquals(new String[] {"host"}, cmd.getOptionValues("c"));
+        assumePosixFileSystem();
+        cmd = new DefaultParser().parse(LogSpoutMain.commandLineOptions(),
+            new String[] {"-c", "host", "pw", "-g", "launch.sh"});
+        assertTrue(LogSpoutMain.generateLaunchScript(cmd).contains(" -c 'host' 'pw'"));
+    }
+
+    @Test
     public void windowsScriptPreservesArgumentsWhenExecuted() throws Exception
     {
         Assume.assumeTrue(isWindows());

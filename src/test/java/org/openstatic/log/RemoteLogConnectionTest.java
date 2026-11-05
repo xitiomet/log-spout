@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -109,5 +110,22 @@ public class RemoteLogConnectionTest
         RemoteLogConnection nested = new RemoteLogConnection(new JSONObject().put("_remote", "ws://localhost"));
         nested.new EventsWebSocket().onText(null, auth(new JSONArray().put(preset("Nested", ""))).toString());
         assertEquals(0, LogSpoutMain.getPresets().length());
+    }
+
+    @Test
+    public void guessesWebSocketUrlsForBareAndPartialAddresses()
+    {
+        assertEquals(List.of("wss://oscar.parlor.me/", "wss://oscar.parlor.me/logspout/",
+            "ws://oscar.parlor.me/", "ws://oscar.parlor.me/logspout/"),
+            RemoteLogConnection.candidateUrls("oscar.parlor.me"));
+        assertEquals(List.of("wss://host:8662/", "wss://host:8662/logspout/",
+            "ws://host:8662/", "ws://host:8662/logspout/"), RemoteLogConnection.candidateUrls("host:8662"));
+        assertEquals(List.of("wss://oscar.parlor.me/", "wss://oscar.parlor.me/logspout/"),
+            RemoteLogConnection.candidateUrls("wss://oscar.parlor.me"));
+        assertEquals(List.of("ws://host:8662/", "ws://host:8662/logspout/"),
+            RemoteLogConnection.candidateUrls("ws://host:8662/"));
+        assertEquals(List.of("wss://proxy/logs", "wss://proxy/logs/logspout/"),
+            RemoteLogConnection.candidateUrls("wss://proxy/logs"));
+        assertEquals(List.of("ws://host:8662/logspout/"), RemoteLogConnection.candidateUrls("ws://host:8662/logspout/"));
     }
 }

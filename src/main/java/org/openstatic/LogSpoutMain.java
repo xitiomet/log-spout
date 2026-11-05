@@ -224,7 +224,12 @@ public class LogSpoutMain
 
             if (cmd.hasOption("c"))
             {
-                LogSpoutMain.settings.put("_remote", cmd.getOptionValue("c"));
+                String[] connect = cmd.getOptionValues("c");
+                if (connect == null || connect[0].isBlank())
+                    throw new IllegalArgumentException("-c / --connect requires a server address");
+                LogSpoutMain.settings.put("_remote", connect[0]);
+                if (connect.length > 1)
+                    LogSpoutMain.settings.put("_remote_password", connect[1]);
             }
 
             if (cmd.hasOption("l"))
@@ -234,14 +239,11 @@ public class LogSpoutMain
 
             if (cmd.hasOption("p"))
             {
-                if (cmd.hasOption("a") && !settings.has("apiPassword"))
-                {
+                if (!cmd.hasOption("a"))
+                    System.err.println("Warning: -p / --password only applies to the local api (-a); "
+                        + "use -c <server> <password> for remote connections");
+                else if (!settings.has("apiPassword"))
                     LogSpoutMain.settings.put("apiPassword", cmd.getOptionValue("p"));
-                }
-                if (cmd.hasOption("c"))
-                {
-                    LogSpoutMain.settings.put("_remote_password", cmd.getOptionValue("p"));
-                }
             }
 
             if (cmd.hasOption("a"))
@@ -348,9 +350,12 @@ public class LogSpoutMain
         options.addOption(new Option("e", "exec", true, "Add a process command to a generated config (repeatable)"));
         options.addOption(new Option("x", "expression", true, "Specify an expression for filtering log data"));
         options.addOption(new Option("s", "stdout", false, "Print logs to STDOUT"));
-        options.addOption(new Option("c", "connect", true, "Connect to a logspout server (ws://hostname:port)"));
+        Option connectOption = Option.builder("c").longOpt("connect").numberOfArgs(2).optionalArg(true)
+            .argName("server> <password").desc("Connect to a logspout server, with an optional password"
+                + " (hostname[:port] tries wss:// then ws://, each with and without /logspout/)").get();
+        options.addOption(connectOption);
         options.addOption(new Option("g", "generate", true, "Generate a launch script (Windows: .cmd, POSIX: Bash)"));
-        options.addOption(new Option("p", "password", true, "Set password to send to remote connection -c, or for local api -a"));
+        options.addOption(new Option("p", "password", true, "Set password for the local api server -a"));
         options.addOption(new Option("l", "log", true, "Select which log to view"));
         options.addOption(new Option("v", "verbose", false, "Turn on verbose output"));
         Option apiOption = new Option("a", "api", true, "Turn on api server, optional argument to specify port (default 8662)");
