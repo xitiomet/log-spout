@@ -238,6 +238,51 @@ public class LogSpoutMainTest
     }
 
     @Test
+    public void skipsExclusivelyLockedWindowsLogFiles() throws Exception
+    {
+        Assume.assumeTrue(isWindows());
+        Path directory = this.temporary.newFolder().toPath();
+        Path locked = Files.writeString(directory.resolve("locked.log"), "locked\n");
+        Path readable = Files.writeString(directory.resolve("readable.log"), "readable\n");
+        Path ready = this.temporary.getRoot().toPath().resolve("lock-ready");
+        File lockErrors = this.temporary.newFile();
+        Process locker = new ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+            "$ErrorActionPreference='Stop'; $file=[System.IO.File]::Open('"
+                + locked.toString().replace("'", "''")
+                + "',[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::None); "
+                + "try { [System.IO.File]::WriteAllText('" + ready.toString().replace("'", "''")
+                + "','ready'); [Console]::ReadLine() | Out-Null } finally { $file.Dispose() }")
+            .redirectError(lockErrors).start();
+        try
+        {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (!Files.exists(ready) && locker.isAlive() && System.nanoTime() < deadline)
+                Thread.sleep(20);
+            assertTrue("Could not lock file: " + Files.readString(lockErrors.toPath()), Files.exists(ready));
+            File errors = this.temporary.newFile();
+            Process process = startCli(errors, "-d", directory.toString());
+            try
+            {
+                assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+                String diagnostics = Files.readString(errors.toPath());
+                assertEquals(diagnostics, 0, process.exitValue());
+                JSONObject config = new JSONObject(new String(process.getInputStream().readAllBytes(),
+                    StandardCharsets.UTF_8));
+                JSONArray sources = config.getJSONArray("_sources");
+                assertEquals(1, sources.length());
+                assertEquals(readable.toString(), sources.getJSONObject(0).getString("_file"));
+                assertTrue(diagnostics.contains("Skipping inaccessible path: " + locked));
+                assertFalse(diagnostics.contains("Found Log: " + locked));
+            } finally {
+                stop(process);
+            }
+        } finally {
+            locker.getOutputStream().close();
+            stop(locker);
+        }
+    }
+
+    @Test
     public void invalidDirectoryFailsWithoutOutput() throws Exception
     {
         File errors = this.temporary.newFile();

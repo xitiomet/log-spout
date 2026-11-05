@@ -10,7 +10,7 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.nio.file.AccessDeniedException;
+import java.nio.file.FileSystemException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -354,7 +354,7 @@ public class LogSpoutMain
                             System.err.println("Skipping binary log: " + path);
                             return FileVisitResult.CONTINUE;
                         }
-                    } catch (AccessDeniedException error) {
+                    } catch (FileSystemException error) {
                         return visitFileFailed(path, error);
                     }
                     files.add(path);
@@ -366,7 +366,7 @@ public class LogSpoutMain
             @Override
             public FileVisitResult visitFileFailed(Path path, IOException error) throws IOException
             {
-                if (error instanceof AccessDeniedException)
+                if (error instanceof FileSystemException)
                 {
                     System.err.println("Skipping inaccessible path: " + path);
                     return FileVisitResult.CONTINUE;

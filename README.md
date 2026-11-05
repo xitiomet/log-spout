@@ -27,9 +27,10 @@ are excluded, and binary content beyond the sample may go undetected.
 The generated root `_name` is the directory path exactly as supplied
 (including a trailing slash), and each source uses `_type: "tail"` with an
 absolute `_file` path and only the filename as its `_name`. Sources are sorted by
-path; an empty directory produces an empty `_sources` array. Access-denied
-paths are skipped with a notice on stderr, allowing accessible directories
-to be scanned, including files that cannot be opened for sampling. Each
+path; an empty directory produces an empty `_sources` array. Paths reporting
+filesystem errors (including access denial and Windows sharing locks) are
+skipped with `Skipping inaccessible path: <path>` on stderr, allowing the
+scan to continue, including files that cannot be opened for sampling. Each
 accepted file emits `Found Log: <absolute path>` on stderr, keeping stdout
 reserved for the generated JSON. Invalid directories and other I/O failures
 report an error instead of starting Log Spout.
