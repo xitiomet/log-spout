@@ -1,8 +1,5 @@
 package org.openstatic.log;
 
-import java.net.URL;
-import java.util.regex.Pattern;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -10,8 +7,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.http.MimeTypes;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -35,21 +30,20 @@ public class InterfaceServlet extends HttpServlet
             target = "/index.html";
         if ("/favicon.ico".equals(target))
             target = "/log-spout.ico";
-        URL data = getClass().getResource(target);
-        if (data != null)
+        try (InputStream inputStream = getClass().getResourceAsStream("/logspout" + target))
         {
+            if (inputStream == null)
+            {
+                httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
             String contentType = getContentTypeFor(target);            
             httpServletResponse.setContentType(contentType);
             httpServletResponse.setStatus(HttpServletResponse.SC_OK);
             httpServletResponse.setCharacterEncoding("UTF-8");
-            InputStream inputStream = getClass().getResourceAsStream(target);
             OutputStream output = httpServletResponse.getOutputStream();
             inputStream.transferTo(output);
             output.flush();
-        } else {
-            //JavaKISSMain.logAppend("interface.log", "GET " + target + " 404");
-            httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
-
         }
         //request.setHandled(true);
     }
