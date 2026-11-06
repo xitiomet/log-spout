@@ -278,7 +278,7 @@ public class LogSpoutMain
                 Files.writeString(filename.toPath(), generateLaunchScript(cmd));
                 if (!isWindows() && !filename.setExecutable(true))
                     throw new IOException("Cannot make script executable: " + filename);
-                System.err.println("\u001b[1;32mGenerated: \u001b[0m" + filename);
+                System.err.println(terminalColor("1;32", "Generated: ") + filename);
                 return;
             }
 
@@ -292,7 +292,7 @@ public class LogSpoutMain
             return;
         }
         final LogConnectionContainer lcc = LogConnectionParser.parseInitial(LogSpoutMain.settings);
-        if (stdoutLogs || (settings.has("apiPort") || settings.has("apiPassword")))
+        if ((stdoutLogs || (settings.has("apiPort") || settings.has("apiPassword"))) && System.console() != null)
         {
             System.err.println(LogSpoutMain.logSpoutAsciiArt);
         }
@@ -435,14 +435,14 @@ public class LogSpoutMain
                     {
                         if (isLikelyBinary(path))
                         {
-                            System.err.println("\u001b[1;33mSkipping binary log: \u001b[0m" + path);
+                            System.err.println(terminalColor("1;33", "Skipping binary log: ") + path);
                             return FileVisitResult.CONTINUE;
                         }
                     } catch (FileSystemException error) {
                         return visitFileFailed(path, error);
                     }
                     files.add(path);
-                    System.err.println("\u001b[1;32mFound Log: \u001b[0m" + path);
+                    System.err.println(terminalColor("1;32", "Found Log: ") + path);
                 }
                 return FileVisitResult.CONTINUE;
             }
@@ -452,7 +452,7 @@ public class LogSpoutMain
             {
                 if (error instanceof FileSystemException)
                 {
-                    System.err.println("\u001b[1;33mSkipping inaccessible path: \u001b[0m" + path);
+                    System.err.println(terminalColor("1;33", "Skipping inaccessible path: ") + path);
                     return FileVisitResult.CONTINUE;
                 }
                 throw error;
@@ -621,11 +621,16 @@ public class LogSpoutMain
         return "'" + value.replace("'", "'\"'\"'") + "'";
     }
 
+    private static String terminalColor(String color, String text)
+    {
+        return System.console() == null ? text : "\u001b[" + color + "m" + text + "\u001b[0m";
+    }
+
     public static void showIPS()
     {
         try
         {
-            System.err.println("\u001b[1;34mWeb Interface:\u001b[0m");
+            System.err.println(terminalColor("1;34", "Web Interface:"));
             Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
             for (NetworkInterface netint : Collections.list(nets))
             {
@@ -818,7 +823,7 @@ public class LogSpoutMain
 
     static boolean awaitBrowserRequest(BufferedReader input, PrintStream output) throws IOException
     {
-        output.println("\u001b[1;36m[Press enter to open in browser]\u001b[0m");
+        output.println(terminalColor("1;36", "[Press enter to open in browser]"));
         output.flush();
         String line;
         while ((line = input.readLine()) != null)
