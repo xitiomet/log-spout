@@ -14,6 +14,8 @@ var appendEnabled = true;
 var presetsData = [];
 var pendingPresetSelection = null;
 var loadingPreset = false;
+var recording = false;
+var recordedLines = [];
 
 $.ajaxSetup({
     timeout:2000 // in milliseconds 
@@ -136,6 +138,79 @@ function updateFilter()
 function clearLog()
 {
     term.reset();
+}
+
+function stripAnsi(text)
+{
+    return text.replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]/g, '').replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, '');
+}
+
+function toggleRecording()
+{
+    var recordButton = document.getElementById('recordButton');
+    if (!recording)
+    {
+        recordedLines = [];
+        recording = true;
+        recordButton.classList.add('recording');
+        recordButton.title = 'Stop Recording and Save';
+    } else {
+        recording = false;
+        recordButton.classList.remove('recording');
+        recordButton.title = 'Start Recording';
+        var lines = recordedLines;
+        recordedLines = [];
+        saveRecording(lines.join('\n') + (lines.length > 0 ? '\n' : ''));
+    }
+}
+
+async function saveRecording(text)
+{
+    var stamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+    var logName = (document.getElementById('logs').value || 'log').replace(/[^A-Za-z0-9_.-]+/g, '_');
+    var suggestedName = logName + '_' + stamp + '.log';
+    if (window.showSaveFilePicker)
+    {
+        try
+        {
+            var handle = await window.showSaveFilePicker({
+                suggestedName: suggestedName,
+                types: [
+                    { description: 'Log File', accept: { 'text/plain': ['.log'] } },
+                    { description: 'Text File', accept: { 'text/plain': ['.txt'] } }
+                ]
+            });
+            var writable = await handle.createWritable();
+            await writable.write(text);
+            await writable.close();
+            return;
+        } catch (err) {
+            if (err.name == 'AbortError')
+            {
+                if (confirm("Discard the recording?"))
+                    return;
+                return saveRecording(text);
+            }
+            console.log(err);
+        }
+    }
+    // Fallback for browsers without the File System Access API
+    var fileName = prompt("Save recording as (.log or .txt):", suggestedName);
+    if (fileName == null)
+        return;
+    fileName = fileName.trim();
+    if (fileName == '')
+        fileName = suggestedName;
+    if (!/\.(log|txt)$/i.test(fileName))
+        fileName += '.log';
+    var url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function updateLog()
@@ -338,6 +413,7 @@ function setupWebsocket()
                     document.getElementById('deletePresetBtn').style.display = 'inline-block';
                     document.getElementById('filterIp').style.display = 'inline-block';
                     document.getElementById('eraser').style.display = 'inline-block';
+                    document.getElementById('recordButton').style.display = 'inline-block';
                     var logsSelector = document.getElementById('logs');
                     logsSelector.innerHTML = "";
                     var first = true;
@@ -391,6 +467,8 @@ function setupWebsocket()
                     if (appendEnabled)
                     {
                         term.writeln(jsonObject.line);
+                        if (recording)
+                            recordedLines.push(stripAnsi(jsonObject.line));
                     }
                 }
             }

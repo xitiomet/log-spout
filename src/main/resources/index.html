@@ -106,6 +106,22 @@
             #clearButton {
               cursor: pointer;
             }
+
+            #recordButton {
+              cursor: pointer;
+              box-sizing: border-box;
+              border: 2px solid transparent;
+              border-radius: 4px;
+            }
+
+            #recordButton.recording {
+              animation: recordFlash 1s step-start infinite;
+            }
+
+            @keyframes recordFlash {
+              0%, 100% { border-color: #ff0000; }
+              50% { border-color: transparent; }
+            }
             
             a {
               color: #ffffff;
@@ -187,10 +203,11 @@
                   <td style="color: white; font-size: 20px;" align="left">Log Spout - <span id="instancename"></span></td>
 
                   <td style="padding-right: 9px;" align="right">
-                    <label class="switch" title="Run/Pause" style="position: absolute; right: 156px; top: 6px;">
+                    <label class="switch" title="Run/Pause" style="position: absolute; right: 192px; top: 6px;">
                       <input type="checkbox" id="autoscroll" name="autoscroll" checked onchange="enableSwitch()"" />
                       <span class="slider round"></span>
                     </label>
+                    <img src="rec.png" id="recordButton" style="width: 32px; height: 32px; display: none;" title="Start Recording" onclick="toggleRecording()" />
                     <img src="eraser-32.png" id="eraser" style="width: 32px; height: 32px; display: none;" title="Clear Log" onclick="clearLog()" />
                     <img src="ip.png" id="filterIp" style="width: 32px; height: 32px; display: none;" title="Filter by my ip" onclick="filterIp()" />
                     <img src="about.png" id="aboutIcon" style="width: 32px; height: 32px;" title="About" onclick="window.open('https://openstatic.org/projects/logspout/', '_blank');" />
