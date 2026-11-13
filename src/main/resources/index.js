@@ -16,6 +16,8 @@ var pendingPresetSelection = null;
 var loadingPreset = false;
 var recording = false;
 var recordedLines = [];
+var recordedBytes = 0;
+var utf8Encoder = new TextEncoder();
 
 $.ajaxSetup({
     timeout:2000 // in milliseconds 
@@ -151,6 +153,7 @@ function toggleRecording()
     if (!recording)
     {
         recordedLines = [];
+        recordedBytes = 0;
         recording = true;
         recordButton.classList.add('recording');
         recordButton.title = 'Stop Recording and Save';
@@ -162,6 +165,34 @@ function toggleRecording()
         recordedLines = [];
         saveRecording(lines.join('\n') + (lines.length > 0 ? '\n' : ''));
     }
+}
+
+function recordLine(line)
+{
+    var clean = stripAnsi(line);
+    recordedLines.push(clean);
+    recordedBytes += utf8Encoder.encode(clean).length + 1;
+}
+
+function formatBytes(bytes)
+{
+    var units = ['bytes', 'KB', 'MB', 'GB'];
+    var i = 0;
+    while (bytes >= 1024 && i < units.length - 1)
+    {
+        bytes /= 1024;
+        i++;
+    }
+    return (i == 0 ? bytes : bytes.toFixed(1)) + ' ' + units[i];
+}
+
+function updateRecordTooltip()
+{
+    if (!recording)
+        return;
+    var count = recordedLines.length;
+    document.getElementById('recordButton').title = 'Recording: ' + count + (count == 1 ? ' line, ' : ' lines, ')
+        + formatBytes(recordedBytes) + '\nClick to stop and save';
 }
 
 async function saveRecording(text)
@@ -468,7 +499,7 @@ function setupWebsocket()
                     {
                         term.writeln(jsonObject.line);
                         if (recording)
-                            recordedLines.push(stripAnsi(jsonObject.line));
+                            recordLine(jsonObject.line);
                     }
                 }
             }
