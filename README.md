@@ -5,6 +5,10 @@ Log Spout reads a JSON config that describes a tree of log sources, streams the
 lines they produce, and optionally exposes them through a small web UI /
 WebSocket API so other instances (or browsers) can subscribe to them.
 
+![](https://openstatic.org/projects/logspout/logspout-terminal.png)
+
+![](https://openstatic.org/projects/logspout/logspout-web.png)
+
 - Load config: `log-spout -f my-config.json`
 - Turn on the web/API on port 8662: `log-spout -f my-config.json -a`
 - Pipe combined output to stdout: `log-spout -f my-config.json -s`
