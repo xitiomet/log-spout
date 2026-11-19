@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -881,6 +882,7 @@ public class LogSpoutMainTest
             builder.directory(this.temporary.getRoot()).redirectError(errors);
             Process process = builder.start();
             Path config;
+            List<ProcessHandle> scriptDescendants = new ArrayList<ProcessHandle>();
             try
             {
                 StringBuilder output = new StringBuilder();
@@ -909,11 +911,19 @@ public class LogSpoutMainTest
                 JSONObject saved = new JSONObject(Files.readString(config));
                 assertEquals(directory + "/", saved.getString("_name"));
                 assertEquals(previousConfig == null ? 1 : 2, saved.getJSONArray("_sources").length());
+                if (runScript)
+                {
+                    scriptDescendants = process.descendants().toList();
+                    assertFalse("Generated script did not start a child process", scriptDescendants.isEmpty());
+                }
                 Files.delete(config);
                 previousConfig = config;
             } finally {
                 stop(process);
             }
+            for (ProcessHandle descendant : scriptDescendants)
+                assertFalse("Generated script left a child process running: " + descendant.pid(),
+                    descendant.isAlive());
         }
         assertFalse(Files.exists(this.temporary.getRoot().toPath().resolve("_TEMP_FILE_")));
     }
@@ -1122,13 +1132,33 @@ public class LogSpoutMainTest
 
     private void stop(Process process) throws Exception
     {
-        if (process.isAlive())
+        List<ProcessHandle> descendants = process.descendants().toList();
+        try
         {
-            process.destroy();
-            if (!process.waitFor(5, TimeUnit.SECONDS))
+            for (int i = descendants.size() - 1; i >= 0; i--)
             {
-                process.destroyForcibly();
-                assertTrue(process.waitFor(5, TimeUnit.SECONDS));
+                ProcessHandle descendant = descendants.get(i);
+                if (descendant.isAlive())
+                {
+                    descendant.destroy();
+                    try
+                    {
+                        descendant.onExit().get(5, TimeUnit.SECONDS);
+                    } catch (TimeoutException e) {
+                        descendant.destroyForcibly();
+                        descendant.onExit().get(5, TimeUnit.SECONDS);
+                    }
+                }
+            }
+        } finally {
+            if (process.isAlive())
+            {
+                process.destroy();
+                if (!process.waitFor(5, TimeUnit.SECONDS))
+                {
+                    process.destroyForcibly();
+                    assertTrue(process.waitFor(5, TimeUnit.SECONDS));
+                }
             }
         }
     }
