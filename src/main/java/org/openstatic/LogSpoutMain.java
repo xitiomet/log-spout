@@ -292,6 +292,10 @@ public class LogSpoutMain
             return;
         }
         final LogConnectionContainer lcc = LogConnectionParser.parseInitial(LogSpoutMain.settings);
+        if (lcc != null)
+        {
+            Runtime.getRuntime().addShutdownHook(new Thread(lcc::disconnect));
+        }
         if ((stdoutLogs || (settings.has("apiPort") || settings.has("apiPassword"))) && System.console() != null)
         {
             System.err.println(LogSpoutMain.logSpoutAsciiArt);
@@ -324,12 +328,6 @@ public class LogSpoutMain
         if (lcc != null && (settings.has("apiPort") || settings.has("apiPassword")))
         {
             LogSpoutMain.apiWebServer = new APIWebServer(lcc);
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                public void run()
-                {
-                    lcc.disconnect();
-                }
-            });
             showIPS();
             if (browserPrompt && LogSpoutMain.apiWebServer.getLocalPort() > 0)
                 offerBrowser(LogSpoutMain.apiWebServer.getLocalPort());

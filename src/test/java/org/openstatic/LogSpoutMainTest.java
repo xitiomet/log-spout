@@ -288,6 +288,44 @@ public class LogSpoutMainTest
     }
 
     @Test
+    public void stdoutShutdownStopsProcessSources() throws Exception
+    {
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+        Path childPidFile = this.temporary.getRoot().toPath().resolve("child.pid");
+        String command = quote(java) + " -cp " + quote(classpath) + " "
+            + BlockingProcess.class.getName() + " " + quote(childPidFile.toString());
+        Process process = new ProcessBuilder(java, "-cp", classpath, LogSpoutMain.class.getName(),
+            "-e", command, "-s").directory(this.temporary.getRoot()).start();
+        long childPid = 0;
+        try
+        {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (!Files.exists(childPidFile) && System.nanoTime() < deadline)
+                Thread.sleep(20);
+            assertTrue("Process source did not start", Files.exists(childPidFile));
+            childPid = Long.parseLong(Files.readString(childPidFile));
+        } finally {
+            stop(process);
+        }
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (ProcessHandle.of(childPid).map(ProcessHandle::isAlive).orElse(false)
+            && System.nanoTime() < deadline)
+            Thread.sleep(20);
+        assertFalse("Process source remained alive after Log Spout exited",
+            ProcessHandle.of(childPid).map(ProcessHandle::isAlive).orElse(false));
+    }
+
+    public static class BlockingProcess
+    {
+        public static void main(String[] args) throws Exception
+        {
+            Files.writeString(Path.of(args[0]), Long.toString(ProcessHandle.current().pid()));
+            Thread.sleep(TimeUnit.MINUTES.toMillis(5));
+        }
+    }
+
+    @Test
     public void commandSplittingPreservesQuotedArgumentsAndWindowsPaths()
     {
         assertEquals("[\"tool\",\"two words\",\"\",\"single quoted\",\"escaped space\",\"C:\\\\logs\\\\app.log\"]",
