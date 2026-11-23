@@ -244,12 +244,14 @@ async function saveRecording(text)
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function updateLog()
+function updateLog(requestHistory)
 {
     var log = document.getElementById('logs').value;
     if (!loadingPreset)
         resetPresetSelection();
     sendEvent({"log": log});
+    if (requestHistory)
+        sendEvent({"history": 200});
 }
 
 function resetPresetSelection()
@@ -305,6 +307,7 @@ function loadPreset()
     updateLog();
     updateFilter();
     loadingPreset = false;
+    sendEvent({"history": 200});
 }
 
 function savePreset()

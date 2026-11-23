@@ -235,6 +235,7 @@ Top-level keys used by the runtime:
 | `_highlight`   | `{ "substring": "\u001b[...m" }` — ANSI prefix injected when a line matches. |
 | `apiPort`      | Port the web UI / WebSocket API listens on (default `8662`).               |
 | `apiPassword`  | Password required by remote clients and the web UI.                        |
+| `historyRetention` | Maximum recent lines read by each tail source on connection and retained by the web server (default `200`; `0` disables history). |
 | `hostname`     | Identifier advertised to remote clients (auto-detected if omitted).        |
 
 ---
@@ -328,7 +329,7 @@ Every leaf source declares a `_type`. The parser recognizes four:
 #### `tail`
 
 Follows a local file directly in Java, without launching an external `tail`
-command. Like `tail -f`, it emits the last 10 lines on connection and then
+command. Like `tail -f`, it emits the last `historyRetention` lines on connection and then
 streams appended lines. Empty files are supported, and if the file is
 truncated, reading resumes from the beginning. It follows the open file
 descriptor, not a replacement file after rename/rotation (like `tail -f`,

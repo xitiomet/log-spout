@@ -16,11 +16,13 @@ import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.openstatic.LogSpoutMain;
 
 public class TailLogConnectionTest
 {
     private Path file;
     private LogConnection connection;
+    private JSONObject previousSettings;
     private final BlockingQueue<String> lines = new LinkedBlockingQueue<String>();
     private final BlockingQueue<Exception> errors = new LinkedBlockingQueue<Exception>();
 
@@ -28,6 +30,8 @@ public class TailLogConnectionTest
     public void createFile() throws Exception
     {
         this.file = Files.createTempFile("log-spout-$-tail-", ".log");
+        this.previousSettings = LogSpoutMain.settings;
+        LogSpoutMain.settings = new JSONObject();
     }
 
     @After
@@ -35,6 +39,7 @@ public class TailLogConnectionTest
     {
         if (this.connection != null)
             this.connection.disconnect();
+        LogSpoutMain.settings = this.previousSettings;
         Files.deleteIfExists(this.file);
     }
 
@@ -79,17 +84,17 @@ public class TailLogConnectionTest
     }
 
     @Test
-    public void emitsLastTenLinesAndFollowsAppends() throws Exception
+    public void emitsLastTwoHundredLinesAndFollowsAppends() throws Exception
     {
         StringBuilder contents = new StringBuilder();
-        for (int i = 0; i < 30; i++)
+        for (int i = 0; i < 230; i++)
             contents.append(i).append(":").append("x".repeat(1000)).append("\n");
         write(contents.toString());
         connect(config());
         assertEquals("tail", this.connection.getType());
         assertEquals(this.file.toString(), this.connection.getName());
         assertTrue(this.connection.getContainedNames().isEmpty());
-        for (int i = 20; i < 30; i++)
+        for (int i = 30; i < 230; i++)
             assertEquals(i + ":" + "x".repeat(1000), nextLine());
         this.connection.connect();
         write("appended\n", StandardOpenOption.APPEND);
@@ -101,6 +106,7 @@ public class TailLogConnectionTest
     @Test
     public void holdsUnterminatedLastLineUntilAppend() throws Exception
     {
+        LogSpoutMain.settings.put("historyRetention", 10);
         StringBuilder contents = new StringBuilder();
         for (int i = 0; i < 11; i++)
             contents.append(i).append("\n");
@@ -112,6 +118,28 @@ public class TailLogConnectionTest
         assertNull(this.lines.poll(200, TimeUnit.MILLISECONDS));
         write(" end\n", StandardOpenOption.APPEND);
         assertEquals("partial end", nextLine());
+    }
+
+    @Test
+    public void usesConfiguredHistoryRetention() throws Exception
+    {
+        LogSpoutMain.settings.put("historyRetention", 2);
+        write("first\nsecond\nthird\n");
+        connect(config());
+        assertEquals("second", nextLine());
+        assertEquals("third", nextLine());
+        assertNull(this.lines.poll(200, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void zeroRetentionStartsAtEnd() throws Exception
+    {
+        LogSpoutMain.settings.put("historyRetention", 0);
+        write("old\n");
+        connect(config());
+        assertNull(this.lines.poll(200, TimeUnit.MILLISECONDS));
+        write("new\n", StandardOpenOption.APPEND);
+        assertEquals("new", nextLine());
     }
 
     @Test

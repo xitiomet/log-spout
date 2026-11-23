@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.json.JSONObject;
+import org.openstatic.LogSpoutMain;
 
 public class TailLogConnection implements LogConnection
 {
@@ -139,6 +140,12 @@ public class TailLogConnection implements LogConnection
     private void seekLastLines(RandomAccessFile input) throws IOException
     {
         long end = input.length();
+        int historyRetention = LogSpoutMain.getHistoryRetention();
+        if (historyRetention == 0)
+        {
+            input.seek(end);
+            return;
+        }
         long position = end;
         int newlines = 0;
         byte[] buffer = new byte[8192];
@@ -150,7 +157,7 @@ public class TailLogConnection implements LogConnection
             input.readFully(buffer, 0, length);
             for (int i = length - 1; i >= 0; i--)
             {
-                if (buffer[i] == '\n' && position + i != end - 1 && ++newlines == 10)
+                if (buffer[i] == '\n' && position + i != end - 1 && ++newlines == historyRetention)
                 {
                     input.seek(position + i + 1);
                     return;

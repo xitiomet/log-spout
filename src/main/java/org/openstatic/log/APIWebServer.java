@@ -107,7 +107,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
         if (obj != null)
         {
             this.packetHistory.add(obj);
-            if (this.packetHistory.size() > 1000)
+            while (this.packetHistory.size() > LogSpoutMain.getHistoryRetention())
                 this.packetHistory.remove(0);
         }
     }
