@@ -5,8 +5,10 @@ import org.openstatic.LogSpoutMain;
 
 import java.io.IOException;
 import java.io.BufferedReader;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
@@ -38,14 +40,14 @@ public class APIWebServer implements Runnable, LogConnectionListener
     protected ArrayList<WebSocketSession> wsSessions;
     protected HashMap<WebSocketSession, JSONObject> sessionProps;
     private Thread pingPongThread;
-    private ArrayList<JSONObject> packetHistory;
+    private HashMap<String, ArrayDeque<JSONObject>> packetHistory;
     private LogConnectionContainer logConnections;
     protected static APIWebServer instance;
 
     public APIWebServer(LogConnectionContainer lc)
     {
         this.logConnections = lc;
-        this.packetHistory = new ArrayList<JSONObject>();
+        this.packetHistory = new HashMap<String, ArrayDeque<JSONObject>>();
         APIWebServer.instance = this;
         this.wsSessions = new ArrayList<WebSocketSession>();
         this.sessionProps = new HashMap<WebSocketSession, JSONObject>();
@@ -102,14 +104,47 @@ public class APIWebServer implements Runnable, LogConnectionListener
         return randKey;
     }
 
-    public void addHistory(JSONObject obj)
+    public synchronized void addHistory(JSONObject obj)
     {
-        if (obj != null)
+        if (obj != null && obj.optJSONArray("path") != null)
         {
-            this.packetHistory.add(obj);
-            while (this.packetHistory.size() > LogSpoutMain.getHistoryRetention())
-                this.packetHistory.remove(0);
+            JSONArray path = obj.getJSONArray("path");
+            Set<String> names = new LinkedHashSet<String>();
+            for (int index = 0; index < path.length(); index++)
+                names.add(path.getString(index));
+            int retention = LogSpoutMain.getHistoryRetention();
+            for (String name : names)
+            {
+                ArrayDeque<JSONObject> history = this.packetHistory.computeIfAbsent(name, key -> new ArrayDeque<JSONObject>());
+                history.addLast(obj);
+                while (history.size() > retention)
+                    history.removeFirst();
+                if (history.isEmpty())
+                    this.packetHistory.remove(name);
+            }
         }
+    }
+
+    private static boolean matchesFilter(String line, String filter)
+    {
+        return filter.isEmpty() || LogSpoutMain.isMatch(line, filter);
+    }
+
+    synchronized List<JSONObject> getHistory(String log, String filter, int count)
+    {
+        ArrayList<JSONObject> result = new ArrayList<JSONObject>();
+        ArrayDeque<JSONObject> history = log.isEmpty() ? null : this.packetHistory.get(log);
+        if (history != null && count > 0)
+        {
+            Iterator<JSONObject> iterator = history.descendingIterator();
+            while (iterator.hasNext() && result.size() < count)
+            {
+                JSONObject packet = iterator.next();
+                if (matchesFilter(packet.optString("line", ""), filter))
+                    result.add(0, packet);
+            }
+        }
+        return result;
     }
 
     public static LinkedHashSet<String> getLogNames(LogConnection lc)
@@ -139,7 +174,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
         JSONObject authJsonObject = new JSONObject();
         authJsonObject.put("action", "authOk");
         authJsonObject.put("termAuth", termAuth);
-        authJsonObject.put("availableHistory", APIWebServer.instance.packetHistory.size());
+        authJsonObject.put("availableHistory", APIWebServer.instance.getHistory(APIWebServer.instance.logConnections.getName(), "", Integer.MAX_VALUE).size());
         authJsonObject.put("logs", getLogNames(APIWebServer.instance.logConnections));
         authJsonObject.put("presets", LogSpoutMain.getPresets());
         authJsonObject.put("hostname", LogSpoutMain.settings.optString("hostname", "LOGSPOUT"));
@@ -184,16 +219,11 @@ public class APIWebServer implements Runnable, LogConnectionListener
             if (j.has("history")) 
             {
                 int historyRequest = j.optInt("history", 100);
-                if (historyRequest > this.packetHistory.size())
-                    historyRequest = this.packetHistory.size();
-                for(int i = this.packetHistory.size() - historyRequest; i < this.packetHistory.size(); i++)
+                String log = sessionProperties.optString("log", "");
+                String filter = sessionProperties.optString("filter", "");
+                for (JSONObject hp : this.getHistory(log, filter, historyRequest))
                 {
-                    JSONObject hp = this.packetHistory.get(i);
-                    if (hp != null)
-                    {
-                        String histPacket = hp.toString();
-                        session.getRemote().sendStringByFuture(histPacket);
-                    }
+                    session.getRemote().sendStringByFuture(hp.toString());
                 }
             } else if (j.has("filter")) {
                 sessionProperties.put("filter", j.optString("filter", ""));
@@ -552,17 +582,7 @@ public class APIWebServer implements Runnable, LogConnectionListener
                                 if (sessionProps.has("filter"))
                                 {
                                     String filter = sessionProps.optString("filter","");
-                                    if (filter.equals(""))
-                                    {
-                                        fitsFilter = true;
-                                    } else {
-                                        try
-                                        {
-                                            fitsFilter = LogSpoutMain.isMatch(line, filter);
-                                        } catch (Exception e2) {
-                                            e2.printStackTrace(System.err);
-                                        }
-                                    }
+                                    fitsFilter = matchesFilter(line, filter);
                                 } else {
                                     fitsFilter = true;
                                 }

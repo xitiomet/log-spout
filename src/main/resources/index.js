@@ -251,7 +251,10 @@ function updateLog(requestHistory)
         resetPresetSelection();
     sendEvent({"log": log});
     if (requestHistory)
+    {
+        clearLog();
         sendEvent({"history": 200});
+    }
 }
 
 function resetPresetSelection()
@@ -307,6 +310,7 @@ function loadPreset()
     updateLog();
     updateFilter();
     loadingPreset = false;
+    clearLog();
     sendEvent({"history": 200});
 }
 
@@ -466,13 +470,13 @@ function setupWebsocket()
                     populatePresets(jsonObject.presets);
                     termAuth = jsonObject.termAuth;
                     updateKCS(true)
-                    sendEvent({
-                        "history": 100
-                    });
                     runFakeTerminal();
                     fitStuff();
                     updateLog();
                     updateFilter();
+                    sendEvent({
+                        "history": 100
+                    });
                 } else if (action == 'authFail') {
                     document.getElementById('errorMsg').innerHTML = jsonObject.error;
                 } else if (action == 'presets') {

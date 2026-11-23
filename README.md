@@ -235,7 +235,7 @@ Top-level keys used by the runtime:
 | `_highlight`   | `{ "substring": "\u001b[...m" }` — ANSI prefix injected when a line matches. |
 | `apiPort`      | Port the web UI / WebSocket API listens on (default `8662`).               |
 | `apiPassword`  | Password required by remote clients and the web UI.                        |
-| `historyRetention` | Maximum recent lines read by each tail source on connection and retained by the web server (default `200`; `0` disables history). |
+| `historyRetention` | Maximum recent lines read by each tail source on connection and retained per selectable log or container by the web server (default `200`; `0` disables history). |
 | `hostname`     | Identifier advertised to remote clients (auto-detected if omitted).        |
 
 ---
